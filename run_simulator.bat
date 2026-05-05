@@ -8,5 +8,5 @@ pip install pygame
 echo.
 echo Starting flight simulator...
 echo.
-python game.py
+python hellcat_sim.py
 pause

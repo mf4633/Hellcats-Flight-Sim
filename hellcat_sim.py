@@ -756,36 +756,180 @@ def _resource_path(filename):
 
 MAP_FILE = _resource_path("long_island_satellite.png")
 
-def _placeholder_satellite_map():
-    # Geo bounds (set below) span ~1.055 deg lon and ~0.532 deg lat;
-    # at the project's 189.4 ft/pixel scale that's roughly 4537 x 1724.
-    width, height = 4537, 1724
+# Default Long Island bounds (matches long_island_satellite.png)
+_DEFAULT_NW = (41.1125, -73.8281)
+_DEFAULT_SE = (40.5806, -72.7734)
+
+
+def _placeholder_satellite_map(width=1536, height=1024):
     surf = pygame.Surface((width, height))
     surf.fill((0, 105, 148))  # water blue, matches in-game ocean color
     try:
         font = pygame.font.SysFont("Arial", 36, bold=True)
-        notice = font.render(
-            "long_island_satellite.png missing - placeholder map",
-            True, (255, 200, 0),
-        )
-        for x in range(0, width, 900):
-            for y in range(0, height, 350):
+        notice = font.render("satellite map unavailable - placeholder", True, (255, 200, 0))
+        for x in range(0, width, 700):
+            for y in range(0, height, 250):
                 surf.blit(notice, (x + 20, y + 20))
     except pygame.error:
         pass
     return surf
 
-try:
-    satellite_map = pygame.image.load(MAP_FILE)
-except (FileNotFoundError, pygame.error) as _map_err:
-    print(f"Warning: satellite map not found at {MAP_FILE} ({_map_err}). Using placeholder.")
+
+def _slippy_tile_xy(lat, lon, zoom):
+    n = 2 ** zoom
+    x = (lon + 180.0) / 360.0 * n
+    lat_rad = math.radians(lat)
+    y = (1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n
+    return x, y
+
+
+def _download_satellite_tiles(lat_n, lon_w, lat_s, lon_e, zoom=11):
+    """Fetch ESRI World Imagery tiles for a bbox; stitch + crop to exact bounds.
+    Cached to ~/.hellcat_tile_cache/. Returns a pygame.Surface."""
+    import urllib.request, io, hashlib
+    cache_dir = os.path.join(os.path.expanduser('~'), '.hellcat_tile_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    key = hashlib.md5(f"{lat_n:.4f}_{lon_w:.4f}_{lat_s:.4f}_{lon_e:.4f}_{zoom}".encode()).hexdigest()[:16]
+    cache_file = os.path.join(cache_dir, f"map_{key}.png")
+    if os.path.exists(cache_file):
+        try:
+            return pygame.image.load(cache_file)
+        except pygame.error:
+            pass
+
+    fx_w, fy_n = _slippy_tile_xy(lat_n, lon_w, zoom)
+    fx_e, fy_s = _slippy_tile_xy(lat_s, lon_e, zoom)
+    x0, y0 = int(math.floor(fx_w)), int(math.floor(fy_n))
+    x1, y1 = int(math.ceil(fx_e)), int(math.ceil(fy_s))
+    n_tiles = max(0, (x1 - x0)) * max(0, (y1 - y0))
+    if n_tiles <= 0:
+        raise ValueError("Empty tile range; check bounds.")
+    if n_tiles > 200:
+        raise ValueError(f"Region too large ({n_tiles} tiles at z={zoom}); narrow your bounds.")
+
+    print(f"Fetching {n_tiles} satellite tiles from ESRI World Imagery...")
+    big = pygame.Surface(((x1 - x0) * 256, (y1 - y0) * 256))
+    url_t = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    headers = {'User-Agent': 'HellcatsSim/1.0 (personal flight sim)'}
+    fetched = 0
+    for tx in range(x0, x1):
+        for ty in range(y0, y1):
+            url = url_t.format(z=zoom, x=tx, y=ty)
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=20) as r:
+                data = r.read()
+            big.blit(pygame.image.load(io.BytesIO(data)), ((tx - x0) * 256, (ty - y0) * 256))
+            fetched += 1
+            if fetched % 10 == 0 or fetched == n_tiles:
+                print(f"  {fetched}/{n_tiles}")
+
+    crop_x = int(round((fx_w - x0) * 256))
+    crop_y = int(round((fy_n - y0) * 256))
+    crop_w = max(1, int(round((fx_e - fx_w) * 256)))
+    crop_h = max(1, int(round((fy_s - fy_n) * 256)))
+    cropped = big.subsurface(pygame.Rect(crop_x, crop_y, crop_w, crop_h)).copy()
+    pygame.image.save(cropped, cache_file)
+    return cropped
+
+
+def _geocode(query):
+    """Nominatim lookup. Returns (n, w, s, e, label) or None."""
+    import urllib.request, urllib.parse, json
+    url = "https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode({
+        "q": query, "format": "json", "limit": 1,
+    })
+    req = urllib.request.Request(url, headers={'User-Agent': 'HellcatsSim/1.0 (personal flight sim)'})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        results = json.loads(r.read())
+    if not results:
+        return None
+    item = results[0]
+    lat = float(item['lat'])
+    lon = float(item['lon'])
+    span_lat, span_lon = 0.5, 1.0  # match Long Island's footprint
+    n, s = lat + span_lat / 2, lat - span_lat / 2
+    e, w = lon + span_lon / 2, lon - span_lon / 2
+    return n, w, s, e, item.get('display_name', query)
+
+
+def _pick_flight_area():
+    import sys
+    if not sys.stdin.isatty():
+        return None
+    print()
+    print("=" * 60)
+    print(" HELLCATS FLIGHT SIM - choose your area of operations")
+    print("=" * 60)
+    print(" Enter a place (e.g. 'Pearl Harbor', 'Wake Island', 'Midway')")
+    print(" Or coordinates as 'lat,lon' (e.g. '21.36,-157.96')")
+    print(" Press Enter for Long Island.")
+    try:
+        return input(" > ").strip() or None
+    except (EOFError, KeyboardInterrupt):
+        return None
+
+
+def _resolve_area(text):
+    """Returns (n, w, s, e, label) for a non-default area, or None for Long Island."""
+    if not text:
+        return None
+    if text.lower() in ('long island', 'longisland', 'li'):
+        return None
+    import re
+    m = re.match(r'^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$', text)
+    if m:
+        lat, lon = float(m.group(1)), float(m.group(2))
+        return lat + 0.25, lon - 0.5, lat - 0.25, lon + 0.5, f"{lat:.4f},{lon:.4f}"
+    try:
+        result = _geocode(text)
+        if result is None:
+            print(f"  Could not geocode '{text}'. Falling back to Long Island.")
+        return result
+    except Exception as e:
+        print(f"  Geocode failed: {e}. Falling back to Long Island.")
+        return None
+
+
+# Resolve area + load (or download) satellite map
+MAP_NW_LAT, MAP_NW_LON = _DEFAULT_NW
+MAP_SE_LAT, MAP_SE_LON = _DEFAULT_SE
+_chosen_area = _resolve_area(_pick_flight_area())
+satellite_map = None
+
+if _chosen_area is None:
+    # Long Island: prefer the local PNG (richer/cropped), else download from ESRI
+    try:
+        satellite_map = pygame.image.load(MAP_FILE)
+        print(f"Loaded local satellite map: {MAP_FILE}")
+    except (FileNotFoundError, pygame.error):
+        try:
+            satellite_map = _download_satellite_tiles(MAP_NW_LAT, MAP_NW_LON, MAP_SE_LAT, MAP_SE_LON)
+        except Exception as e:
+            print(f"Long Island tile download failed: {e}")
+else:
+    n, w, s, e, label = _chosen_area
+    MAP_NW_LAT, MAP_NW_LON = n, w
+    MAP_SE_LAT, MAP_SE_LON = s, e
+    print(f"Flight area: {label}")
+    print(f"  bounds  NW=({n:.3f},{w:.3f})  SE=({s:.3f},{e:.3f})")
+    try:
+        satellite_map = _download_satellite_tiles(n, w, s, e)
+    except Exception as ex:
+        print(f"Tile download failed: {ex}")
+
+if satellite_map is None:
+    print("Using placeholder satellite map.")
     satellite_map = _placeholder_satellite_map()
+
 MAP_WIDTH, MAP_HEIGHT = satellite_map.get_size()
 
-# Map geo-reference
-MAP_NW_LAT, MAP_NW_LON = 41.1125, -73.8281
-MAP_SE_LAT, MAP_SE_LON = 40.5806, -72.7734
-MAP_SCALE_FT_PER_PIXEL = 189.4
+# Geo-reference (already set above) and per-region scale derived from actual map size
+_center_lat = (MAP_NW_LAT + MAP_SE_LAT) / 2
+_span_lon_ft = abs(MAP_SE_LON - MAP_NW_LON) * 364000 * math.cos(math.radians(_center_lat))
+_span_lat_ft = abs(MAP_NW_LAT - MAP_SE_LAT) * 364000
+MAP_SCALE_FT_PER_PIXEL = ((_span_lon_ft / MAP_WIDTH) + (_span_lat_ft / MAP_HEIGHT)) / 2
+MAP_CENTER_LAT = _center_lat
+MAP_CENTER_LON = (MAP_NW_LON + MAP_SE_LON) / 2
 
 
 def geo_to_pixel(lat, lon):
@@ -3574,8 +3718,8 @@ class F6F_Hellcat(Aircraft):
     STALL_SPEED_FLAPS = 70
 
     def reset(self):
-        self.ref_lat = 40.7288
-        self.ref_lon = -73.4134
+        self.ref_lat = MAP_CENTER_LAT
+        self.ref_lon = MAP_CENTER_LON
         self.x, self.y, self.z = 0, 0, 5000
         self.vx, self.vy, self.vz = 0, 250 * 1.68781, 0
         self.pitch, self.roll, self.heading = 2, 0, 0
@@ -3984,8 +4128,8 @@ class Boeing747_200(Aircraft):
     CRUISE_MACH = 0.84
 
     def reset(self):
-        self.ref_lat = 40.7288
-        self.ref_lon = -73.4134
+        self.ref_lat = MAP_CENTER_LAT
+        self.ref_lon = MAP_CENTER_LON
         self.x, self.y, self.z = 0, 0, 10000  # Start higher
         self.vx, self.vy, self.vz = 0, 280 * 1.68781, 0  # 280 knots
         self.pitch, self.roll, self.heading = 2.5, 0, 0

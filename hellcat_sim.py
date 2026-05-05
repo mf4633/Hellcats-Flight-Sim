@@ -5506,7 +5506,7 @@ def draw_chase_view(surface, aircraft, map_img, time_elapsed):
         ry = px * math.sin(roll_rad) + py * math.cos(roll_rad)
         return (cx + rx * scale, cy + ry * scale * 0.5)
 
-    is_747 = isinstance(aircraft, Boeing747_200) or isinstance(aircraft, DisasterAircraft)
+    is_747 = isinstance(aircraft, (Boeing747_200, DisasterAircraft))
 
     if is_747:
         # --- Boeing 747 ---
@@ -6062,9 +6062,9 @@ def draw_targets_overhead(surface, target_mgr, aircraft):
             if enemy.alive:
                 hdg_rad = math.radians(enemy.heading)
                 cos_h, sin_h = math.cos(hdg_rad), math.sin(hdg_rad)
-                def er(px, py):
-                    return (screen_x + px * cos_h - py * sin_h,
-                            screen_y + px * sin_h + py * cos_h)
+                def er(px, py, sx=screen_x, sy=screen_y, ch=cos_h, sh=sin_h):
+                    return (sx + px * ch - py * sh,
+                            sy + px * sh + py * ch)
                 if enemy.variant == 'bomber':
                     # G4M Betty - larger, twin-engine silhouette
                     body = [er(0, -10), er(2, 8), er(0, 12), er(-2, 8)]
@@ -6603,7 +6603,7 @@ def draw_aircraft_symbol(surface, aircraft):
     def rot(px, py):
         return (cx + px * cos_h - py * sin_h, cy + px * sin_h + py * cos_h)
 
-    if isinstance(aircraft, Boeing747_200) or isinstance(aircraft, DisasterAircraft):
+    if isinstance(aircraft, (Boeing747_200, DisasterAircraft)):
         # 747 planform (top view) - swept wings, 4 engines
         body = [rot(0, -30), rot(4, -25), rot(5, 25), rot(3, 35), rot(0, 38),
                 rot(-3, 35), rot(-5, 25), rot(-4, -25)]
@@ -7247,9 +7247,9 @@ def main():
                         menu_items = []  # Campaign has no selectable items
 
                     if menu_items:
-                        if event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                        if event.key in (pygame.K_a, pygame.K_LEFT):
                             selected_index = (selected_index - 1) % len(menu_items)
-                        if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                        if event.key in (pygame.K_d, pygame.K_RIGHT):
                             selected_index = (selected_index + 1) % len(menu_items)
 
                     if event.key == pygame.K_RETURN:
@@ -7317,9 +7317,9 @@ def main():
                             aircraft.gear_down = not aircraft.gear_down
 
                     # Drag coefficient adjustment with [ and ] keys
-                    if event.key == pygame.K_RIGHTBRACKET or event.key == pygame.K_EQUALS:
+                    if event.key in (pygame.K_RIGHTBRACKET, pygame.K_EQUALS):
                         aircraft.drag_modifier = min(5.0, aircraft.drag_modifier + 0.1)
-                    if event.key == pygame.K_LEFTBRACKET or event.key == pygame.K_MINUS:
+                    if event.key in (pygame.K_LEFTBRACKET, pygame.K_MINUS):
                         aircraft.drag_modifier = max(0.2, aircraft.drag_modifier - 0.1)
 
                     # Camera view cycle with V key

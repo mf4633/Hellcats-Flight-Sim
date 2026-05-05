@@ -755,7 +755,31 @@ def _resource_path(filename):
     return os.path.join(os.path.expanduser('~'), filename)
 
 MAP_FILE = _resource_path("long_island_satellite.png")
-satellite_map = pygame.image.load(MAP_FILE)
+
+def _placeholder_satellite_map():
+    # Geo bounds (set below) span ~1.055 deg lon and ~0.532 deg lat;
+    # at the project's 189.4 ft/pixel scale that's roughly 4537 x 1724.
+    width, height = 4537, 1724
+    surf = pygame.Surface((width, height))
+    surf.fill((0, 105, 148))  # water blue, matches in-game ocean color
+    try:
+        font = pygame.font.SysFont("Arial", 36, bold=True)
+        notice = font.render(
+            "long_island_satellite.png missing - placeholder map",
+            True, (255, 200, 0),
+        )
+        for x in range(0, width, 900):
+            for y in range(0, height, 350):
+                surf.blit(notice, (x + 20, y + 20))
+    except pygame.error:
+        pass
+    return surf
+
+try:
+    satellite_map = pygame.image.load(MAP_FILE)
+except (FileNotFoundError, pygame.error) as _map_err:
+    print(f"Warning: satellite map not found at {MAP_FILE} ({_map_err}). Using placeholder.")
+    satellite_map = _placeholder_satellite_map()
 MAP_WIDTH, MAP_HEIGHT = satellite_map.get_size()
 
 # Map geo-reference

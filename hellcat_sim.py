@@ -4085,6 +4085,60 @@ class F6F_Hellcat(Aircraft):
         return lift / weight if weight > 0 else 1.0
 
 
+# ============== VOUGHT F4U-1D CORSAIR ==============
+class F4U_Corsair(F6F_Hellcat):
+    """Vought F4U-1D Corsair - the gull-winged "Whistling Death."
+
+    Shares the Hellcat's flight model, combat systems, and damage model
+    (inherited from F6F_Hellcat) but flies as a distinct airframe. The
+    R-2800-8W with water injection plus a very clean airframe give it a
+    higher top speed and a famously high dive limit, paid for with a
+    higher stall speed and a sharper, gull-wing stall.
+    """
+    NAME = "F4U-1D Corsair"
+    DESCRIPTION = "WWII Navy Fighter-Bomber"
+
+    # Specifications (F4U-1D)
+    WING_AREA = 314.0
+    WINGSPAN = 41.0
+    ASPECT_RATIO = WINGSPAN ** 2 / WING_AREA  # ~5.35
+    EMPTY_WEIGHT = 8982
+    FUEL_WEIGHT = 1700      # ~237 gal internal
+    COMBAT_WEIGHT = 12039
+    MAX_WEIGHT = 14670
+
+    MAX_POWER_HP = 2250     # R-2800-8W with water injection
+    CRITICAL_ALT = 19900
+
+    # Aerodynamics - slightly cleaner than the Hellcat (faster top speed),
+    # but the gull wing has a lower clean CLmax and a sharper stall.
+    CD0_CLEAN = 0.032
+    CD0_GEAR = 0.025
+    CD0_FLAPS = 0.10
+    OSWALD_E = 0.78
+    CLMAX_CLEAN = 1.30
+    CLMAX_FLAPS = 1.80
+    CL_ALPHA = 0.1
+    CL0 = 0.2
+    CL_FLAPS_BONUS = 0.4
+
+    VNE = 450               # famous high-speed dive limit
+    MANEUVERING_SPEED = 260
+    FLAPS_MAX_SPEED = 120
+    GEAR_MAX_SPEED = 145
+    STALL_SPEED_CLEAN = 92
+    STALL_SPEED_FLAPS = 76
+
+    def reset(self):
+        super().reset()
+        # F4U-1D loadout: 6x .50 cal, 8x HVAR rockets, 2x 1000lb bombs.
+        # No torpedo - the Corsair served as a fighter-bomber.
+        self.mg_ammo = 2350     # ~390 rounds per gun x 6
+        self.rockets = 8
+        self.bombs = 2
+        self.torpedoes = 0
+
+
 # ============== BOEING 747-200 ==============
 class Boeing747_200(Aircraft):
     NAME = "Boeing 747-200"
@@ -4842,6 +4896,115 @@ def draw_f6f_rendering(surface, x, y, scale=1.0):
     surface.blit(num, (int(x + 55*s), int(y - 12*s)))
 
 
+def draw_f4u_rendering(surface, x, y, scale=1.0):
+    """Draw F4U-1D Corsair side view - dark Sea Blue, inverted gull wing."""
+    s = scale
+    NAVY = (30, 42, 78)
+    NAVY_D = (18, 28, 55)
+    NAVY_L = (48, 64, 110)
+    COWL = (45, 45, 50)
+    METAL = (140, 140, 140)
+
+    # Fuselage - long nose (the Corsair's signature), tapers to the tail
+    fuse_top = [
+        (x - 95*s, y - 2*s), (x - 82*s, y - 13*s), (x - 45*s, y - 17*s),
+        (x + 18*s, y - 15*s), (x + 55*s, y - 13*s), (x + 88*s, y - 8*s),
+        (x + 102*s, y - 2*s)
+    ]
+    fuse_bot = [
+        (x + 102*s, y + 2*s), (x + 88*s, y + 6*s), (x + 55*s, y + 8*s),
+        (x + 18*s, y + 9*s), (x - 45*s, y + 9*s), (x - 82*s, y + 7*s),
+        (x - 95*s, y + 2*s)
+    ]
+    fuselage = fuse_top + fuse_bot
+    pygame.draw.polygon(surface, NAVY, fuselage)
+    belly = [
+        (x - 82*s, y + 2*s), (x + 82*s, y + 2*s),
+        (x + 82*s, y + 6*s), (x - 82*s, y + 6*s)
+    ]
+    pygame.draw.polygon(surface, NAVY_L, belly)
+    pygame.draw.polygon(surface, NAVY_D, fuselage, 2)
+
+    # Engine cowling (round, dark) on the long nose
+    cowl_pts = [
+        (x - 95*s, y - 2*s), (x - 108*s, y - 9*s), (x - 110*s, y),
+        (x - 108*s, y + 9*s), (x - 95*s, y + 2*s)
+    ]
+    pygame.draw.polygon(surface, COWL, cowl_pts)
+    pygame.draw.polygon(surface, (28, 28, 28), cowl_pts, 2)
+
+    # Exhaust stacks
+    for ey in range(-5, 7, 3):
+        pygame.draw.circle(surface, (80, 60, 40), (int(x - 92*s), int(y + ey*s)), int(2*s))
+
+    # Propeller disc + hub (big Hamilton Standard paddle blades)
+    pygame.draw.ellipse(surface, (60, 60, 60), (int(x - 116*s), int(y - 32*s),
+                                                  int(11*s), int(64*s)))
+    pygame.draw.circle(surface, (85, 85, 85), (int(x - 110*s), int(y)), int(5*s))
+
+    # Inverted gull wing - root dips DOWN sharply, then the panel bends back
+    # up and out. This is the Corsair's defining feature.
+    gull = [
+        (x - 28*s, y + 5*s),       # wing root at fuselage
+        (x - 18*s, y + 30*s),      # gull bend (lowest point)
+        (x - 58*s, y + 22*s),      # outer panel sweeps up and forward
+        (x - 70*s, y + 14*s),      # wingtip
+        (x - 60*s, y + 10*s),
+        (x - 22*s, y + 18*s),
+        (x + 2*s, y + 9*s)
+    ]
+    pygame.draw.polygon(surface, NAVY_L, gull)
+    pygame.draw.polygon(surface, NAVY_D, gull, 2)
+    # Gull "kink" crease line
+    pygame.draw.line(surface, NAVY_D, (int(x - 18*s), int(y + 30*s)),
+                     (int(x - 28*s), int(y + 5*s)), 2)
+
+    # Horizontal tail
+    htail = [
+        (x + 80*s, y - 6*s), (x + 100*s, y - 18*s), (x + 107*s, y - 16*s),
+        (x + 96*s, y - 4*s)
+    ]
+    pygame.draw.polygon(surface, NAVY_L, htail)
+    pygame.draw.polygon(surface, NAVY_D, htail, 2)
+
+    # Vertical tail (tall, angular Corsair fin)
+    vtail = [
+        (x + 80*s, y - 13*s), (x + 88*s, y - 40*s), (x + 99*s, y - 38*s),
+        (x + 102*s, y - 11*s)
+    ]
+    pygame.draw.polygon(surface, NAVY, vtail)
+    pygame.draw.polygon(surface, NAVY_D, vtail, 2)
+    pygame.draw.line(surface, NAVY_D, (int(x + 94*s), int(y - 37*s)),
+                     (int(x + 97*s), int(y - 9*s)), 1)
+
+    # Cockpit canopy (framed bubble, set well back behind the long nose)
+    canopy = [
+        (x - 5*s, y - 15*s), (x - 10*s, y - 24*s), (x + 2*s, y - 28*s),
+        (x + 20*s, y - 28*s), (x + 34*s, y - 22*s), (x + 38*s, y - 15*s)
+    ]
+    pygame.draw.polygon(surface, (100, 150, 210), canopy)
+    pygame.draw.polygon(surface, (55, 55, 65), canopy, 2)
+    for cx_off in [4, 14, 24]:
+        pygame.draw.line(surface, (55, 55, 65),
+                         (int(x + cx_off*s), int(y - 15*s)),
+                         (int(x + cx_off*s), int(y - 27*s)), 1)
+
+    # Arresting hook (stowed)
+    pygame.draw.line(surface, METAL, (int(x + 78*s), int(y + 8*s)),
+                     (int(x + 88*s), int(y + 6*s)), 2)
+
+    # Star-and-bars insignia (US Navy marking)
+    star_x, star_y = int(x + 30*s), int(y)
+    r_out = int(13*s)
+    r_in = int(8*s)
+    pygame.draw.circle(surface, WHITE, (star_x, star_y), r_out)
+    pygame.draw.rect(surface, WHITE, (star_x - int(20*s), star_y - int(4*s),
+                                      int(40*s), int(8*s)))
+    pygame.draw.circle(surface, NAVY, (star_x, star_y), r_in)
+    pygame.draw.circle(surface, WHITE, (star_x, star_y), int(5*s))
+    pygame.draw.circle(surface, NAVY, (star_x, star_y), int(3*s))
+
+
 def draw_747_rendering(surface, x, y, scale=1.0):
     """Draw 747 side view"""
     s = scale
@@ -4930,11 +5093,14 @@ def draw_home_screen(surface, selected_index, menu_items, current_menu):
         sub_rect = subtitle.get_rect(center=(WIDTH // 2, 165))
         surface.blit(subtitle, sub_rect)
 
-        # Aircraft cards
-        card_width = 500
+        # Aircraft cards - size adapts to the number of aircraft so they fit
+        n_cards = len(menu_items)
         card_height = 280
-        card_spacing = 80
-        total_width = len(menu_items) * card_width + (len(menu_items) - 1) * card_spacing
+        card_spacing = 40
+        card_width = min(500, (WIDTH - 80 - (n_cards - 1) * card_spacing) // n_cards)
+        # Scale the side-view art to the card width (1.8 in the original 500px card)
+        art_scale = min(1.8, card_width / 280.0)
+        total_width = n_cards * card_width + (n_cards - 1) * card_spacing
         start_x = (WIDTH - total_width) // 2
 
         for i, aircraft_class in enumerate(menu_items):
@@ -4952,9 +5118,11 @@ def draw_home_screen(surface, selected_index, menu_items, current_menu):
             render_y = card_y + 90
 
             if aircraft_class == F6F_Hellcat:
-                draw_f6f_rendering(surface, render_x, render_y, 1.8)
+                draw_f6f_rendering(surface, render_x, render_y, art_scale)
+            elif aircraft_class == F4U_Corsair:
+                draw_f4u_rendering(surface, render_x, render_y, art_scale)
             else:
-                draw_747_rendering(surface, render_x, render_y, 1.5)
+                draw_747_rendering(surface, render_x, render_y, art_scale * 0.85)
 
             name = font_large.render(aircraft_class.NAME, True, WHITE)
             name_rect = name.get_rect(center=(card_x + card_width // 2, card_y + 185))
@@ -4966,6 +5134,8 @@ def draw_home_screen(surface, selected_index, menu_items, current_menu):
 
             if aircraft_class == F6F_Hellcat:
                 specs = ["Max Speed: 380 kts", "Engine: 2,000 HP", "Weight: 12,598 lbs"]
+            elif aircraft_class == F4U_Corsair:
+                specs = ["Max Speed: 395 kts", "Engine: 2,250 HP", "Weight: 12,039 lbs"]
             else:
                 specs = ["Cruise: Mach 0.84", "Engines: 4x 46,500 lbf", "Weight: 600,000 lbs"]
 
@@ -6797,7 +6967,7 @@ def draw_instruments(surface, aircraft, status):
     pygame.draw.circle(surface, (30, 30, 30), (spd_cx, spd_cy), spd_radius + 3)
     pygame.draw.circle(surface, (50, 50, 50), (spd_cx, spd_cy), spd_radius)
 
-    max_spd = 450 if isinstance(aircraft, Boeing747_200) else 400
+    max_spd = 450 if (isinstance(aircraft, Boeing747_200) or getattr(aircraft, 'VNE', 0) > 400) else 400
     for spd_mark in range(0, max_spd + 50, 50):
         angle = math.radians(225 - (spd_mark / max_spd) * 270)
         inner_r, outer_r = spd_radius - 10, spd_radius - 3
@@ -7066,7 +7236,7 @@ def draw_g_effects(surface, aircraft):
 
 # ============== MAIN PROGRAM ==============
 def main():
-    aircraft_list = [F6F_Hellcat, Boeing747_200]
+    aircraft_list = [F6F_Hellcat, F4U_Corsair, Boeing747_200]
     mission_list = MISSIONS
     disaster_list = DISASTER_SCENARIOS
 

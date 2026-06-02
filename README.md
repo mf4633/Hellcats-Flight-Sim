@@ -11,6 +11,13 @@ A recreation of the classic 1991 flight simulator featuring the F6F Hellcat in P
   - Armament: 6× .50 caliber machine guns
   - Excellent dive performance and ruggedness
 
+- **F4U-1D Corsair** - The gull-winged "Whistling Death" (selectable in Free Flight)
+  - R-2800-8W with water injection (2,250 hp); cleaner, faster airframe than the Hellcat
+  - Famous high-speed dive limit (VNE 450 kts)
+  - Armament: 6× .50 cal, 8× HVAR rockets, 2× 1,000 lb bombs
+  - Distinctive inverted-gull wing; higher stall speed and a sharper stall than the Hellcat
+  - Shares the Hellcat's full flight, combat, and damage model
+
 - **A6M Zero** - Primary enemy fighter
   - Superior maneuverability 
   - Lower speed but excellent turning
@@ -89,8 +96,7 @@ This simulator emphasizes:
 
 ## Future Enhancements
 
-- Carrier landing operations
-- More aircraft types (F4U Corsair, SBD Dauntless)
+- More aircraft types (SBD Dauntless)
 - Bomb and torpedo attacks
 - Weather systems
 - Campaign mode

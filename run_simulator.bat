@@ -4,7 +4,7 @@ echo    HELLCATS OVER THE PACIFIC - Enhanced Edition
 echo ===============================================
 echo.
 echo Installing required packages...
-pip install pygame
+pip install -r requirements.txt
 echo.
 echo Starting flight simulator...
 echo.

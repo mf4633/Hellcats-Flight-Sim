@@ -1,6 +1,7 @@
 """Flyable aircraft physics."""
 import math
 import random
+import pygame
 from hellcats.bootstrap import (
     MAP_CENTER_LAT, MAP_CENTER_LON, PHYSICS_DT,
 )

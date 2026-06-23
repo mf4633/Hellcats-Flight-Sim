@@ -837,12 +837,13 @@ class TargetManager:
                 continue
             # Bombs check on impact (z near 0)
             if bomb.z <= 10:
-                # Check all targets in blast radius (200 ft)
+                blast_radius = 200 if bomb.weight <= 500 else 280
+                max_damage = 300 * (bomb.weight / 500)
                 for ship in self.ships:
                     if ship.alive:
                         dist = math.sqrt((bomb.x - ship.x)**2 + (bomb.y - ship.y)**2)
-                        if dist < 200:
-                            damage = 300 * (1 - dist / 200)
+                        if dist < blast_radius:
+                            damage = max_damage * (1 - dist / blast_radius)
                             ship.take_damage(damage)
                             if not ship.alive:
                                 self.score += self._get_score(ship)

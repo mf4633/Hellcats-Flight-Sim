@@ -4,7 +4,8 @@ import pygame
 from hellcats.bootstrap import (
     WIDTH, HEIGHT, WHITE, BLACK, HUD_GREEN, HUD_AMBER, HUD_RED,
     font_large, font_med, font_small, font_tiny,
-    satellite_map, MAP_WIDTH, MAP_HEIGHT,
+    satellite_map, MAP_WIDTH, MAP_HEIGHT, MAP_SCALE_FT_PER_PIXEL,
+    MAP_NW_LAT, MAP_NW_LON, MAP_SE_LAT, MAP_SE_LON,
     _get_ai_mask, _panel_surface, _map_surface, _haze_surface,
     CAMERA_OVERHEAD, CAMERA_COCKPIT, CAMERA_CHASE, CAMERA_NAMES,
 )
@@ -1666,6 +1667,10 @@ def draw_instruments(surface, aircraft, status):
 
     # Airspeed gauge
     ias = aircraft.get_airspeed_kts()
+    if getattr(aircraft, '_airspeed_unreliable', False):
+        ias += getattr(aircraft, '_display_airspeed_offset', 0)
+        unreliable = font_tiny.render("UNRELIABLE AS", True, HUD_RED)
+        surface.blit(unreliable, (20, panel_y + 70))
     spd_color = HUD_GREEN
     stall_spd = aircraft.STALL_SPEED_FLAPS if aircraft.flaps else aircraft.STALL_SPEED_CLEAN
     if ias < stall_spd + 10 or ias > aircraft.VNE:
@@ -1941,6 +1946,41 @@ def draw_g_effects(surface, aircraft):
             warn = font_med.render("BLACKOUT", True, (180, 180, 180))
             rect = warn.get_rect(center=(WIDTH // 2, 100))
             surface.blit(warn, rect)
+
+
+def draw_dive_bomb_hud(surface, aircraft):
+    """SBD dive-bombing attack symbology."""
+    from hellcats.dive_bombing import dive_hud_lines, in_release_window, RELEASE_ALT_MIN, RELEASE_ALT_MAX
+
+    lines = dive_hud_lines(aircraft)
+    if not lines:
+        return
+
+    y = 120
+    for line in lines:
+        color = HUD_GREEN
+        if 'RELEASE WINDOW' in line:
+            color = (255, 215, 0)
+        elif 'PULL' in line or 'OVERSPEED' in line:
+            color = HUD_RED
+        text = font_small.render(line, True, color)
+        surface.blit(text, (WIDTH // 2 - text.get_width() // 2, y))
+        y += 24
+
+    if getattr(aircraft, 'dive_mode', '') == 'diving':
+        alt = aircraft.z
+        bar_w = 200
+        bx = WIDTH // 2 - bar_w // 2
+        by = y + 8
+        pygame.draw.rect(surface, (40, 40, 40), (bx, by, bar_w, 12))
+        lo = RELEASE_ALT_MIN - 500
+        hi = RELEASE_ALT_MAX + 1500
+        if lo < alt < hi:
+            wx = bx + int((alt - lo) / (hi - lo) * bar_w)
+            ww = int((RELEASE_ALT_MAX - RELEASE_ALT_MIN) / (hi - lo) * bar_w)
+            wstart = bx + int((RELEASE_ALT_MIN - lo) / (hi - lo) * bar_w)
+            pygame.draw.rect(surface, HUD_AMBER, (wstart, by, ww, 12))
+            pygame.draw.line(surface, HUD_GREEN if in_release_window(alt) else WHITE, (wx, by - 2), (wx, by + 14), 2)
 
 
 def draw_landing_grade(surface, result):

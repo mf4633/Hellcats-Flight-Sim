@@ -12,6 +12,9 @@ class SoundManager:
         self.sounds = {}
         self._music_track = None
         self._engine_playing = None
+        self.music_enabled = True
+        self.music_volume = 0.20
+        self.sfx_volume = 1.0
         try:
             self._generate_sfx()
             self._generate_music()
@@ -75,6 +78,28 @@ class SoundManager:
             ((random.random() - 0.5) * 0.4 + math.sin(2 * math.pi * 100 * t) * 0.3) *
             max(0, 1 - t * 3) * min(1, t * 15))
 
+        # Per-airframe engine loops
+        self.sounds['radial_fighter_idle'] = self.sounds['engine_idle']
+        self.sounds['radial_fighter_full'] = self.sounds['engine_full']
+        self.sounds['radial_corsair_idle'] = self._make_sound(1.0, lambda t, i, n:
+            math.sin(2 * math.pi * 95 * t) * 0.14 + math.sin(2 * math.pi * 140 * t) * 0.09)
+        self.sounds['radial_corsair_full'] = self._make_sound(1.0, lambda t, i, n:
+            math.sin(2 * math.pi * 175 * t) * 0.14 + math.sin(2 * math.pi * 260 * t) * 0.10)
+        self.sounds['radial_sbd_idle'] = self._make_sound(1.0, lambda t, i, n:
+            math.sin(2 * math.pi * 70 * t) * 0.14 + math.sin(2 * math.pi * 105 * t) * 0.08)
+        self.sounds['radial_sbd_full'] = self._make_sound(1.0, lambda t, i, n:
+            math.sin(2 * math.pi * 130 * t) * 0.14 + math.sin(2 * math.pi * 195 * t) * 0.09)
+        self.sounds['jet_wide_idle'] = self._make_sound(1.2, lambda t, i, n:
+            math.sin(2 * math.pi * 45 * t) * 0.10 + (random.random() - 0.5) * 0.02)
+        self.sounds['jet_wide_full'] = self._make_sound(1.2, lambda t, i, n:
+            math.sin(2 * math.pi * 85 * t) * 0.12 + math.sin(2 * math.pi * 120 * t) * 0.06)
+        self.sounds['jet_narrow_idle'] = self._make_sound(1.0, lambda t, i, n:
+            math.sin(2 * math.pi * 110 * t) * 0.09 + math.sin(2 * math.pi * 220 * t) * 0.05)
+        self.sounds['jet_narrow_full'] = self._make_sound(1.0, lambda t, i, n:
+            math.sin(2 * math.pi * 180 * t) * 0.10 + math.sin(2 * math.pi * 360 * t) * 0.05)
+        self.sounds['jet_wide_twin_idle'] = self.sounds['jet_wide_idle']
+        self.sounds['jet_wide_twin_full'] = self.sounds['jet_wide_full']
+
         # Stings
         self.sounds['landing_perfect'] = self._make_sound(1.2, lambda t, i, n:
             sum(math.sin(2 * math.pi * f * t) * 0.12 * max(0, 1 - t * 0.8)
@@ -136,16 +161,23 @@ class SoundManager:
         ch = self.channels.get(ch_name)
         if ch:
             ch.play(self.sounds[name], loops=(-1 if loop else 0))
+            if ch_name != 'music':
+                ch.set_volume(self.sfx_volume)
 
     def play_sting(self, name):
         self.play(name, loop=False)
 
     def play_music(self, track):
         """track: 'menu', 'combat', 'disaster', or None to stop."""
-        if not self.enabled:
+        if not self.enabled or not self.music_enabled:
+            if not track:
+                self.stop('music')
             return
         key = f'music_{track}' if track else None
         if key == self._music_track:
+            ch = self.channels.get('music')
+            if ch:
+                ch.set_volume(self.music_volume)
             return
         ch = self.channels.get('music')
         if not ch:
@@ -157,9 +189,14 @@ class SoundManager:
         if key not in self.sounds:
             return
         ch.play(self.sounds[key], loops=-1)
-        volumes = {'menu': 0.22, 'combat': 0.18, 'disaster': 0.20}
-        ch.set_volume(volumes.get(track, 0.18))
+        ch.set_volume(self.music_volume)
         self._music_track = key
+
+    def toggle_music(self):
+        self.music_enabled = not self.music_enabled
+        if not self.music_enabled:
+            self.stop('music')
+        return self.music_enabled
 
     def stop_music(self):
         self.play_music(None)
@@ -170,7 +207,7 @@ class SoundManager:
             if channel_name == 'music':
                 self._music_track = None
 
-    def update_engine(self, throttle, flying=True):
+    def update_engine(self, aircraft, throttle, flying=True):
         if not self.enabled:
             return
         ch = self.channels.get('engine')
@@ -180,8 +217,11 @@ class SoundManager:
             ch.stop()
             self._engine_playing = None
             return
-        target = 'engine_full' if throttle > 0.5 else 'engine_idle'
+        sound_base = getattr(aircraft.__class__, 'ENGINE_SOUND', 'radial_fighter')
+        target = f"{sound_base}_{'full' if throttle > 0.5 else 'idle'}"
+        if target not in self.sounds:
+            target = 'engine_full' if throttle > 0.5 else 'engine_idle'
         if self._engine_playing != target:
             ch.play(self.sounds[target], loops=-1)
             self._engine_playing = target
-        ch.set_volume(0.15 + throttle * 0.35)
+        ch.set_volume((0.12 + throttle * 0.30) * self.sfx_volume)

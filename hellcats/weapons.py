@@ -106,12 +106,11 @@ class Rocket(Projectile):
 
 
 class Bomb(Projectile):
-    """500 lb GP (General Purpose) bomb"""
+    """GP bomb (500 or 1000 lb)"""
 
-    def __init__(self, x, y, z, aircraft_vx, aircraft_vy, aircraft_vz, heading, pitch):
-        # Bombs just inherit aircraft velocity, no launch velocity
+    def __init__(self, x, y, z, aircraft_vx, aircraft_vy, aircraft_vz, heading, pitch, weight=500):
         super().__init__(x, y, z, aircraft_vx, aircraft_vy, aircraft_vz, heading, pitch)
-        self.weight = 500  # lbs
+        self.weight = weight
         self.armed = False
         self.arm_altitude = z - 500  # Arms after falling 500 ft
         self.trail = []  # Falling trail for visual
@@ -258,18 +257,35 @@ class WeaponsManager:
         return True
 
     def drop_bomb(self, aircraft):
-        """Release 500 lb bomb"""
+        """Release GP bomb (level or shallow delivery)."""
         if aircraft.bombs <= 0:
             return False
 
+        weight = getattr(aircraft, 'bomb_weight', 500)
         aircraft.bombs -= 1
-        # Centerline mounted
         bomb = Bomb(aircraft.x, aircraft.y, aircraft.z - 5,
                    aircraft.vx, aircraft.vy, aircraft.vz,
-                   aircraft.heading, aircraft.pitch)
+                   aircraft.heading, aircraft.pitch, weight=weight)
         self.bombs.append(bomb)
-        # Reduce aircraft weight
-        aircraft.weight -= 500
+        aircraft.weight -= weight
+        return True
+
+    def drop_dive_bomb(self, aircraft):
+        """SBD dive-bomb release — must be in the attack window."""
+        from hellcats.dive_bombing import validate_dive_drop
+
+        ok, reason = validate_dive_drop(aircraft)
+        if not ok:
+            return reason
+
+        weight = getattr(aircraft, 'bomb_weight', 1000)
+        aircraft.bombs -= 1
+        aircraft.dive_bomb_released = True
+        bomb = Bomb(aircraft.x, aircraft.y, aircraft.z - 5,
+                   aircraft.vx, aircraft.vy, aircraft.vz,
+                   aircraft.heading, aircraft.pitch, weight=weight)
+        self.bombs.append(bomb)
+        aircraft.weight -= weight
         return True
 
     def drop_torpedo(self, aircraft):
@@ -307,7 +323,8 @@ class WeaponsManager:
         for bomb in self.bombs:
             bomb.update(dt)
             if not bomb.alive:
-                self.explosions.append([bomb.x, bomb.y, bomb.z, 0, 200])
+                blast = 200 if bomb.weight <= 500 else 320
+                self.explosions.append([bomb.x, bomb.y, bomb.z, 0, blast])
         self.bombs = [b for b in self.bombs if b.alive]
 
         # Update torpedoes

@@ -11,11 +11,21 @@ class TestImports(unittest.TestCase):
             MISSIONS, MissionCoralSea, MissionMidwayCAP,
             MissionMidwayDive, MissionCarrierQual,
         )
-        from hellcats.disasters import DISASTER_SCENARIOS
+        from hellcats.disasters import DISASTER_SCENARIOS, Helios522
         from hellcats.carrier_ops import LandingScorer
         from hellcats.sound import SoundManager
         self.assertEqual(len(MISSIONS), 12)
-        self.assertEqual(len(DISASTER_SCENARIOS), 4)
+        from hellcats.disasters import create_disaster_aircraft, AirFrance447, Eastern401
+        from hellcats.dive_bombing import validate_dive_drop
+        self.assertEqual(len(DISASTER_SCENARIOS), 6)
+        self.assertIn(AirFrance447, DISASTER_SCENARIOS)
+        self.assertIn(Eastern401, DISASTER_SCENARIOS)
+        sbd = SBD_Dauntless()
+        sbd.dive_mode = 'cruise'
+        ok, _ = validate_dive_drop(sbd)
+        self.assertFalse(ok)
+        ac = create_disaster_aircraft(Helios522())
+        self.assertEqual(ac.NAME, "Boeing 737-300")
         self.assertTrue(issubclass(SBD_Dauntless, F6F_Hellcat))
         self.assertIn(MissionCoralSea, MISSIONS)
         self.assertIn(MissionMidwayCAP, MISSIONS)

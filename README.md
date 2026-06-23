@@ -2,13 +2,17 @@
 
 A WWII Pygame flight simulator and historical disaster recreation, inspired by the classic 1991 *Hellcats Over the Pacific*. Fly Pacific Theater combat missions, campaign sorties, and forensic simulations of historic aviation accidents — all in one physics engine.
 
+![Main menu — Free Flight](docs/screenshots/01_menu_free_flight.png)
+
 ## Features
 
 ### Flyable Aircraft
 - **F6F-5 Hellcat** — US Navy fleet defender; 6× .50 cal, HVAR rockets, bombs, torpedo
 - **F4U-1D Corsair** — faster, higher VNE dive limit; 6× .50 cal, 8× HVAR, 2× 1,000 lb bombs
-- **SBD-5 Dauntless** — carrier dive bomber; hold **B** for dive brakes during attack runs
+- **SBD-5 Dauntless** — carrier dive bomber; hold **B** for dive brakes, steep dive, release 1,500–3,000 ft AGL
 - **Boeing 747-200** — airliner physics for free flight and disaster scenarios
+- **Boeing 737-300** — narrow-body jet (Helios 522 scenario)
+- **Airbus A330-200** — wide-body jet with unreliable-airspeed simulation (AF447)
 
 ### Enemy Aircraft
 - **A6M Zero** — superior turn rate, historical AI dogfighting
@@ -21,7 +25,7 @@ A WWII Pygame flight simulator and historical disaster recreation, inspired by t
 4. **Scramble** — intercept inbound bomber strike
 5. **Coral Sea** — defend the task force (May 1942)
 6. **Midway CAP** — break the first wave over Midway (June 1942)
-7. **Midway Dive** — SBD dive bomb on the carrier Kaga, then RTB (June 1942)
+7. **Midway Dive** — SBD dive bomb on the carrier Kaga (release window 1,500–3,000 ft), then RTB (June 1942)
 8. **Divine Wind** — kamikaze defense
 9. **Flat Top** — sink the enemy carrier
 10. **Bomber Escort** — protect B-17s to the target
@@ -31,14 +35,25 @@ A WWII Pygame flight simulator and historical disaster recreation, inspired by t
 ### Carrier Landing Grades
 Every trap is scored by the LSO: **S** (perfect), **A**, **B** (pass), **C**, **F** (bolter). Scoring factors: wire number, approach speed, sink rate, centerline, gear. The SBD uses a slower trap window (95–115 kts). Grades award bonus points and appear in your pilot dossier (**P**).
 
-### Audio
-Procedural background music: menu theme, combat tension, disaster drone. Stings play on perfect traps and mission results. Toggle volume via system mixer; no external audio files required.
+### Dive Bombing (SBD)
+Hold **B** for dive brakes and enter a steep dive on the target. The HUD shows dive state (cruise → diving → pullout) and release altitude. Drop your 1,000 lb bomb between **1,500–3,000 ft** AGL for a valid hit on **Midway Dive**.
 
-### Disaster Recreations (4)
+### Audio
+Procedural background music: menu theme, combat tension, disaster drone. Per-airframe engine timbres (radial fighters, SBD, jet narrow/wide). Stings play on perfect traps and mission results. No external audio files required.
+
+| Key | Action |
+|-----|--------|
+| N | Toggle background music |
+| 9 / 0 | Music volume down / up |
+| 7 / 8 | SFX volume down / up |
+
+### Disaster Recreations (6)
 - **TWA Flight 800** (1996) — center fuel tank explosion
 - **Pan Am Flight 103** (1988) — Lockerbie bomb detonation
 - **JAL Flight 123** (1985) — hydraulic failure; engines still work
-- **Helios Flight 522** (2005) — hypoxia; descend below 10,000 ft to survive
+- **Helios Flight 522** (2005) — Boeing 737; hypoxia — descend below 10,000 ft to survive
+- **Air France Flight 447** (2009) — Airbus A330; pitot icing and unreliable airspeed
+- **Eastern Air Lines 401** (1972) — autopilot disconnect; watch the altimeter
 
 ### Other Modes
 - **Campaign** — linear mission progression with persistent aircraft state
@@ -53,6 +68,22 @@ Procedural background music: menu theme, combat tension, disaster drone. Stings 
 
 ```bash
 pip install -r requirements.txt
+```
+
+## Screenshots
+
+| Menu | Missions | Midway Dive briefing |
+|------|----------|----------------------|
+| ![Free Flight](docs/screenshots/01_menu_free_flight.png) | ![Missions](docs/screenshots/02_menu_missions.png) | ![Briefing](docs/screenshots/03_midway_dive_briefing.png) |
+
+| Cockpit (Hellcat) | LSO grade S |
+|-------------------|-------------|
+| ![Cockpit](docs/screenshots/04_cockpit_hellcat.png) | ![LSO](docs/screenshots/05_lso_grade_s.png) |
+
+Regenerate with:
+
+```bash
+python scripts/capture_screenshots.py
 ```
 
 ## Running
@@ -89,6 +120,9 @@ python -m hellcats
 | +/- or ]/[ | Drag coefficient |
 | R | Reset |
 | M | Return to menu |
+| N | Toggle music |
+| 7/8 | SFX volume down/up |
+| 9/0 | Music volume down/up |
 | ESC | Menu / quit |
 
 ### Combat (Hellcat family)
@@ -119,6 +153,8 @@ hellcats/
   carrier_ops.py        # LSO landing grades
   missions.py           # Combat missions & campaign
   disasters.py          # Historical accident scenarios
+  dive_bombing.py       # SBD dive-bomb state machine & HUD
+  sound.py              # Procedural SFX and music
   weapons.py / targets.py / friendly.py
   render_game.py        # Cockpit, chase, HUD, instruments
   game.py               # Main loop

@@ -1,6 +1,6 @@
 """Side-view aircraft art for menus."""
 import pygame
-from hellcats.bootstrap import WHITE, HUD_GREEN, HUD_AMBER
+from hellcats.bootstrap import WHITE, HUD_GREEN, HUD_AMBER, font_tiny
 
 # ============== AIRCRAFT RENDERING ==============
 def draw_f6f_rendering(surface, x, y, scale=1.0):

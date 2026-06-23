@@ -69,6 +69,7 @@ class F6F_Hellcat(Aircraft):
     # Carrier landing parameters (LSO grading)
     CARRIER_IDEAL_SPEED = (105, 125)
     CARRIER_MAX_WIRE_SPEED = 150
+    ENGINE_SOUND = 'radial_fighter'
 
     def reset(self):
         self.ref_lat = MAP_CENTER_LAT
@@ -484,6 +485,7 @@ class F4U_Corsair(F6F_Hellcat):
 
     CARRIER_IDEAL_SPEED = (108, 128)
     CARRIER_MAX_WIRE_SPEED = 145
+    ENGINE_SOUND = 'radial_corsair'
 
     def reset(self):
         super().reset()
@@ -536,17 +538,25 @@ class SBD_Dauntless(F6F_Hellcat):
     # Heavier approach — slower trap window, steeper LSO standards
     CARRIER_IDEAL_SPEED = (95, 115)
     CARRIER_MAX_WIRE_SPEED = 130
+    ENGINE_SOUND = 'radial_sbd'
 
     def reset(self):
         super().reset()
         self.mg_ammo = 1600
         self.rockets = 0
         self.bombs = 1
+        self.bomb_weight = 1000
         self.torpedoes = 0
         self.dive_brakes = False
+        self.dive_mode = 'cruise'
+        self.dive_start_alt = 0
+        self.dive_bomb_armed = False
+        self.dive_bomb_released = False
 
     def update(self, dt, keys):
         import pygame
+        from hellcats.dive_bombing import update_dive_state
+
         if keys[pygame.K_b]:
             self.dive_brakes = True
             self.drag_modifier = max(self.drag_modifier, 2.2)
@@ -554,7 +564,12 @@ class SBD_Dauntless(F6F_Hellcat):
             self.dive_brakes = False
             if self.drag_modifier > 1.5:
                 self.drag_modifier = 1.0
-        return super().update(dt, keys)
+
+        dive_status = update_dive_state(self, dt)
+        result = super().update(dt, keys)
+        if dive_status:
+            return dive_status
+        return result
 
 
 # ============== BOEING 747-200 ==============
@@ -598,6 +613,7 @@ class Boeing747_200(Aircraft):
 
     CRUISE_ALTITUDE = 35000
     CRUISE_MACH = 0.84
+    ENGINE_SOUND = 'jet_wide'
 
     def reset(self):
         self.ref_lat = MAP_CENTER_LAT
@@ -843,5 +859,61 @@ class Boeing747_200(Aircraft):
         if lift is None or weight is None:
             lift, _, _, weight, _, _, _, _ = self.calculate_forces()
         return lift / weight if weight > 0 else 1.0
+
+
+# ============== BOEING 737-300 ==============
+class Boeing737_300(Boeing747_200):
+    """Narrowbody airliner — 737-300 class physics (Helios 522, etc.)."""
+    NAME = "Boeing 737-300"
+    DESCRIPTION = "Narrowbody Airliner"
+
+    WING_AREA = 1240.0
+    WINGSPAN = 112.0
+    ASPECT_RATIO = WINGSPAN ** 2 / WING_AREA
+    EMPTY_WEIGHT = 72000
+    FUEL_WEIGHT = 35000
+    TYPICAL_WEIGHT = 130000
+    MAX_WEIGHT = 155000
+
+    MAX_THRUST_PER_ENGINE = 22000
+    NUM_ENGINES = 2
+    MAX_THRUST = MAX_THRUST_PER_ENGINE * NUM_ENGINES
+
+    CD0_CLEAN = 0.022
+    VNE = 350
+    STALL_SPEED_CLEAN = 130
+    STALL_SPEED_FLAPS = 105
+    CRUISE_ALTITUDE = 35000
+    CRUISE_MACH = 0.78
+
+    ENGINE_SOUND = 'jet_narrow'
+
+
+# ============== AIRBUS A330-200 ==============
+class AirbusA330_200(Boeing747_200):
+    """Widebody twin — A330-200 class physics (AF 447, etc.)."""
+    NAME = "Airbus A330-200"
+    DESCRIPTION = "Widebody Twin Airliner"
+
+    WING_AREA = 3140.0
+    WINGSPAN = 198.0
+    ASPECT_RATIO = WINGSPAN ** 2 / WING_AREA
+    EMPTY_WEIGHT = 275000
+    FUEL_WEIGHT = 140000
+    TYPICAL_WEIGHT = 450000
+    MAX_WEIGHT = 507000
+
+    MAX_THRUST_PER_ENGINE = 70000
+    NUM_ENGINES = 2
+    MAX_THRUST = MAX_THRUST_PER_ENGINE * NUM_ENGINES
+
+    CD0_CLEAN = 0.019
+    VNE = 400
+    STALL_SPEED_CLEAN = 145
+    STALL_SPEED_FLAPS = 115
+    CRUISE_ALTITUDE = 37000
+    CRUISE_MACH = 0.82
+
+    ENGINE_SOUND = 'jet_wide_twin'
 
 

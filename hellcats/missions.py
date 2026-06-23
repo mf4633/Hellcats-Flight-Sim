@@ -696,10 +696,13 @@ class MissionMidwayDive(Mission):
         "Climb to 8,000 ft, locate the carrier 6 miles northeast,",
         "and execute a diving attack. Hold B for dive brakes.",
         "",
-        "Drop your 1,000 lb bomb between 1,500 and 3,000 ft.",
-        "Sink the Kaga, then return for a carrier landing.",
+        "DIVE ATTACK PROCEDURE:",
+        "  1. Climb above 4,000 ft, roll in on target",
+        "  2. Hold B for dive brakes, pitch down steep",
+        "  3. Release 1,000 lb bomb between 1,500-3,000 ft",
+        "  4. Pull out hard, RTB and trap aboard",
         "",
-        "CAP Zeros are patrolling the fleet. Stay fast in the dive.",
+        "CAP Zeros patrol the fleet. Watch dive airspeed.",
     ]
     START_ALT = 8000
     START_SPEED = 200

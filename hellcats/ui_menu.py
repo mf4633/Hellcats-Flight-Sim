@@ -2,7 +2,7 @@
 import pygame
 from hellcats.bootstrap import (
     WIDTH, HEIGHT, WHITE, HUD_GREEN, HUD_AMBER,
-    font_title, font_large, font_med, font_tiny,
+    font_title, font_large, font_med, font_small, font_tiny,
 )
 from hellcats.render_aircraft import (
     draw_f6f_rendering, draw_f4u_rendering, draw_747_rendering, draw_sbd_rendering,
@@ -233,7 +233,7 @@ def draw_home_screen(surface, selected_index, menu_items, current_menu):
         sub_rect = subtitle.get_rect(center=(WIDTH // 2, 165))
         surface.blit(subtitle, sub_rect)
 
-        desc = font_small.render("Fly all 8 missions in order. Damage carries between sorties.", True, (180, 180, 180))
+        desc = font_small.render("Fly all 12 missions in order. Damage carries between sorties.", True, (180, 180, 180))
         desc_rect = desc.get_rect(center=(WIDTH // 2, 195))
         surface.blit(desc, desc_rect)
 

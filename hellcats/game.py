@@ -24,7 +24,7 @@ from hellcats.dossier import (
     draw_mission_briefing, draw_mission_hud, draw_mission_result,
 )
 from hellcats.aircraft import F6F_Hellcat, F4U_Corsair, SBD_Dauntless, Boeing747_200
-from hellcats.disasters import DISASTER_SCENARIOS, DisasterAircraft
+from hellcats.disasters import DISASTER_SCENARIOS, create_disaster_aircraft
 from hellcats.ui_menu import draw_home_screen
 from hellcats.missions import draw_campaign_status
 from hellcats.render_game import (
@@ -33,7 +33,7 @@ from hellcats.render_game import (
     draw_weapons_overhead, draw_weapons_cockpit, draw_weapons_hud,
     draw_targets_overhead, draw_targets_cockpit, draw_wingmen_3d,
     draw_score_display, draw_friendly_carrier, draw_aircraft_symbol,
-    draw_radar, draw_minimap, draw_landing_grade,
+    draw_radar, draw_minimap, draw_landing_grade, draw_dive_bomb_hud,
 )
 
 # ============== MAIN PROGRAM ==============
@@ -151,6 +151,26 @@ def main():
                 if event.key == pygame.K_p:
                     show_dossier = not show_dossier
 
+                if event.key == pygame.K_n:
+                    on = sound_mgr.toggle_music()
+                    if game_state in ("MENU", "CAMPAIGN", "BRIEFING"):
+                        sound_mgr.play_music('menu') if on else None
+                    elif game_state in ("FLYING", "TAKEOFF") and aircraft:
+                        sound_mgr.play_music('disaster' if active_scenario else 'combat') if on else None
+
+                if event.key == pygame.K_9:
+                    sound_mgr.music_volume = max(0.0, sound_mgr.music_volume - 0.05)
+                    if sound_mgr._music_track:
+                        sound_mgr.channels['music'].set_volume(sound_mgr.music_volume)
+                if event.key == pygame.K_0:
+                    sound_mgr.music_volume = min(0.5, sound_mgr.music_volume + 0.05)
+                    if sound_mgr._music_track:
+                        sound_mgr.channels['music'].set_volume(sound_mgr.music_volume)
+                if event.key == pygame.K_7:
+                    sound_mgr.sfx_volume = max(0.0, sound_mgr.sfx_volume - 0.1)
+                if event.key == pygame.K_8:
+                    sound_mgr.sfx_volume = min(1.5, sound_mgr.sfx_volume + 0.1)
+
                 if game_state == "BRIEFING":
                     if event.key == pygame.K_RETURN:
                         # Set weather and time of day from mission
@@ -263,7 +283,7 @@ def main():
                             # Disaster recreation
                             scenario_class = menu_items[selected_index]
                             active_scenario = scenario_class()
-                            aircraft = DisasterAircraft(active_scenario)
+                            aircraft = create_disaster_aircraft(active_scenario)
                             active_mission = None
 
                         game_state = "FLYING"
@@ -337,7 +357,13 @@ def main():
                                 if weapons_mgr.fire_rocket(aircraft):
                                     sound_mgr.play('rocket')
                             elif aircraft.selected_weapon == 2:
-                                if weapons_mgr.drop_bomb(aircraft):
+                                if isinstance(aircraft, SBD_Dauntless):
+                                    drop = weapons_mgr.drop_dive_bomb(aircraft)
+                                    if drop is True:
+                                        sound_mgr.play('explosion_large')
+                                    elif isinstance(drop, str):
+                                        status = f"BOMB: {drop}"
+                                elif weapons_mgr.drop_bomb(aircraft):
                                     sound_mgr.play('explosion')
                             elif aircraft.selected_weapon == 3:
                                 if weapons_mgr.drop_torpedo(aircraft):
@@ -401,7 +427,7 @@ def main():
                 aircraft.x, aircraft.y = sx, sy
                 aircraft.heading = sh
 
-            sound_mgr.update_engine(aircraft.throttle, True)
+            sound_mgr.update_engine(aircraft, aircraft.throttle, True)
             weather.update(dt)
             time_of_day.update(dt)
             radio.update(dt)
@@ -551,7 +577,7 @@ def main():
                 status = aircraft.update(dt, keys)
 
                 # Update sounds
-                sound_mgr.update_engine(aircraft.throttle, aircraft.z > 0)
+                sound_mgr.update_engine(aircraft, aircraft.throttle, aircraft.z > 0)
                 if aircraft.stalled:
                     if not sound_mgr.channels.get('alerts', None) or \
                        not sound_mgr.channels['alerts'].get_busy():
@@ -717,6 +743,9 @@ def main():
             # LSO grade card after trap
             if landing_grade_timer > 0 and last_landing_result:
                 draw_landing_grade(screen, last_landing_result)
+
+            if isinstance(aircraft, SBD_Dauntless):
+                draw_dive_bomb_hud(screen, aircraft)
 
             # Camera view indicator
             view_text = font_small.render(f"VIEW: {CAMERA_NAMES[camera_view]} (V to change)", True, WHITE)

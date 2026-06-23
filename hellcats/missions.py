@@ -5,6 +5,8 @@ from hellcats.time_of_day import TimeOfDay
 from hellcats.targets import EnemyAircraft, Ship, GroundTarget
 from hellcats.friendly import FriendlyBomber
 from hellcats.hotp import hotp_rng
+from hellcats.carrier_ops import LandingScorer
+from hellcats.aircraft import F6F_Hellcat, SBD_Dauntless
 from hellcats.bootstrap import (
     PHYSICS_DT, WIDTH, HEIGHT, HUD_GREEN, HUD_AMBER, HUD_RED, WHITE,
     font_title, font_large, font_med, font_small,
@@ -628,10 +630,124 @@ class MissionMidwayCAP(Mission):
         return "active"
 
 
+class MissionCarrierQual(Mission):
+    """SBD carrier qualification — graded trap required."""
+    NAME = "Carrier Qual (SBD)"
+    AIRCRAFT_CLASS = SBD_Dauntless
+    DIFFICULTY = 2
+    OBJECTIVE = "Qualify the Dauntless: trap with grade B or better."
+    BRIEFING = [
+        "CARRIER QUALIFICATION — SBD",
+        "",
+        "Before Midway, every Dauntless pilot must prove",
+        "they can bring a heavy dive bomber aboard.",
+        "",
+        "Launch from the deck, fly the pattern, and trap.",
+        "LSO grades: S (perfect), A, B (pass), C, F (bolter).",
+        "",
+        "SBD approach speed: 95–115 kts. Gear down. Flaps on.",
+        "Wire 3 is the sweet spot. Hold the centerline.",
+        "",
+        "Objective: Grade B or better to qualify.",
+    ]
+    START_ALT = 3000
+    START_SPEED = 180
+    CARRIER_TAKEOFF = True
+
+    def __init__(self):
+        super().__init__()
+        self.last_trap_grade = None
+
+    def setup_targets(self, target_mgr, carrier):
+        target_mgr.ships.clear()
+        target_mgr.ground_targets.clear()
+        target_mgr.enemy_aircraft.clear()
+
+    def on_trap(self, grade):
+        self.last_trap_grade = grade
+
+    def check_objectives(self, aircraft, target_mgr, carrier):
+        if self.last_trap_grade and LandingScorer().grade_at_least(self.last_trap_grade, 'B'):
+            if aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
+                v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
+                if v < 15:
+                    self.returned_to_base = True
+                    return "success"
+        return "active"
+
+    def get_score(self):
+        base = super().get_score()
+        grade_bonus = {'S': 800, 'A': 500, 'B': 300}.get(self.last_trap_grade, 0)
+        return base + grade_bonus
+
+
+class MissionMidwayDive(Mission):
+    """June 4, 1942 — SBD dive bombing attack on IJN Kaga."""
+    NAME = "Midway Dive"
+    AIRCRAFT_CLASS = SBD_Dauntless
+    DIFFICULTY = 5
+    OBJECTIVE = "Dive bomb the carrier Kaga. RTB and trap aboard."
+    BRIEFING = [
+        "MIDWAY — DIVE BOMBING ATTACK",
+        "",
+        "June 4, 1942. Scout planes have found the Japanese",
+        "carrier Kaga. You are flying an SBD-5 from USS Enterprise.",
+        "",
+        "Climb to 8,000 ft, locate the carrier 6 miles northeast,",
+        "and execute a diving attack. Hold B for dive brakes.",
+        "",
+        "Drop your 1,000 lb bomb between 1,500 and 3,000 ft.",
+        "Sink the Kaga, then return for a carrier landing.",
+        "",
+        "CAP Zeros are patrolling the fleet. Stay fast in the dive.",
+    ]
+    START_ALT = 8000
+    START_SPEED = 200
+    START_HEADING = 45
+    CARRIER_TAKEOFF = True
+
+    def __init__(self):
+        super().__init__()
+        self.carrier_sunk = False
+
+    def setup_targets(self, target_mgr, carrier):
+        target_mgr.ships.clear()
+        target_mgr.ground_targets.clear()
+        target_mgr.enemy_aircraft.clear()
+        kaga_x, kaga_y = 35000, 35000
+        target_mgr.ships.append(Ship(kaga_x, kaga_y, 'carrier', heading=225))
+        target_mgr.ships.append(Ship(kaga_x - 2500, kaga_y - 2000, 'destroyer', heading=225))
+        target_mgr.ships.append(Ship(kaga_x + 2000, kaga_y - 1500, 'destroyer', heading=225))
+        for i in range(3):
+            target_mgr.enemy_aircraft.append(
+                EnemyAircraft(kaga_x + (i - 1) * 3000, kaga_y + 8000, 10000 + i * 500, heading=180))
+
+    def check_objectives(self, aircraft, target_mgr, carrier):
+        kaga_alive = any(s.alive and s.ship_type == 'carrier' for s in target_mgr.ships)
+        if not kaga_alive:
+            self.carrier_sunk = True
+            self.objectives_met = True
+
+        if self.objectives_met and aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
+            v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
+            if v < 15:
+                self.returned_to_base = True
+                return "success"
+        return "active"
+
+    def get_score(self):
+        return super().get_score() + (2000 if self.carrier_sunk else 0)
+
+
+def mission_aircraft_class(mission_cls):
+    """Return flyable class for a mission (default: Hellcat)."""
+    return getattr(mission_cls, 'AIRCRAFT_CLASS', F6F_Hellcat)
+
+
 MISSIONS = [
-    MissionFlightSchool, MissionBombBase, MissionScramble, MissionCoralSea,
-    MissionMidwayCAP, MissionDivineWind, MissionFlatTop, MissionBomberEscort,
-    MissionTorpedoRun, MissionNightStrike,
+    MissionFlightSchool, MissionCarrierQual, MissionBombBase, MissionScramble,
+    MissionCoralSea, MissionMidwayCAP, MissionMidwayDive, MissionDivineWind,
+    MissionFlatTop, MissionBomberEscort, MissionTorpedoRun, MissionNightStrike,
 ]
 
 
@@ -639,9 +755,9 @@ MISSIONS = [
 class Campaign:
     """Linear mission progression with persistent state between sorties."""
     MISSION_ORDER = [
-        MissionFlightSchool, MissionBombBase, MissionScramble, MissionCoralSea,
-        MissionMidwayCAP, MissionTorpedoRun, MissionBomberEscort, MissionDivineWind,
-        MissionFlatTop, MissionNightStrike,
+        MissionFlightSchool, MissionCarrierQual, MissionBombBase, MissionScramble,
+        MissionCoralSea, MissionMidwayCAP, MissionMidwayDive, MissionTorpedoRun,
+        MissionBomberEscort, MissionDivineWind, MissionFlatTop, MissionNightStrike,
     ]
 
     def __init__(self):

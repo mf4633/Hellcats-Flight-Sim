@@ -17,7 +17,8 @@ from hellcats.fdr import FlightDataRecorder
 from hellcats.weapons import WeaponsManager
 from hellcats.targets import TargetManager
 from hellcats.friendly import FriendlyCarrier, FriendlyAircraft
-from hellcats.missions import MISSIONS, Campaign
+from hellcats.missions import MISSIONS, Campaign, mission_aircraft_class
+from hellcats.carrier_ops import LandingScorer
 from hellcats.dossier import (
     PilotDossier, InputRecorder, draw_dossier,
     draw_mission_briefing, draw_mission_hud, draw_mission_result,
@@ -32,7 +33,7 @@ from hellcats.render_game import (
     draw_weapons_overhead, draw_weapons_cockpit, draw_weapons_hud,
     draw_targets_overhead, draw_targets_cockpit, draw_wingmen_3d,
     draw_score_display, draw_friendly_carrier, draw_aircraft_symbol,
-    draw_radar, draw_minimap,
+    draw_radar, draw_minimap, draw_landing_grade,
 )
 
 # ============== MAIN PROGRAM ==============
@@ -75,6 +76,9 @@ def main():
     time_of_day = TimeOfDay(TimeOfDay.DAY)
     radio = RadioChatter()
     campaign = Campaign()
+    landing_scorer = LandingScorer()
+    landing_grade_timer = 0.0
+    last_landing_result = None
 
     # Carrier takeoff state
     takeoff_throttle_held = 0.0  # seconds throttle held at full for deck launch
@@ -88,6 +92,16 @@ def main():
         clock.tick(60)
         dt = PHYSICS_DT  # Fixed timestep for deterministic replay
         time_elapsed += dt
+        if landing_grade_timer > 0:
+            landing_grade_timer -= dt
+
+        # Background music by game state
+        if game_state in ("MENU", "CAMPAIGN", "BRIEFING"):
+            sound_mgr.play_music('menu')
+        elif game_state in ("FLYING", "TAKEOFF") and aircraft:
+            sound_mgr.play_music('disaster' if active_scenario else 'combat')
+        else:
+            sound_mgr.stop_music()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -148,8 +162,11 @@ def main():
                         radio.messages.clear()
                         radio.cooldowns.clear()
 
-                        # Launch mission
-                        aircraft = F6F_Hellcat()
+                        # Launch mission (SBD missions use AIRCRAFT_CLASS)
+                        ac_cls = mission_aircraft_class(active_mission.__class__)
+                        aircraft = ac_cls()
+                        landing_scorer.reset_approach()
+                        last_landing_result = None
                         active_mission.setup_targets(target_mgr, friendly_carrier)
                         status = "FLYING"
                         crashed = False
@@ -422,30 +439,49 @@ def main():
             # Update friendly carrier
             friendly_carrier.update(dt)
 
-            # Check carrier deck landing (Hellcat only)
+            # Carrier deck landing (Hellcat-family aircraft)
             if hasattr(aircraft, 'mg_ammo') and aircraft.z <= 65 and aircraft.z > 0:
                 if friendly_carrier.check_on_deck(aircraft.x, aircraft.y):
-                    aircraft.z = 65  # Deck height ~65 ft above water
+                    aircraft.z = 65
+                    max_wire = getattr(aircraft.__class__, 'CARRIER_MAX_WIRE_SPEED', 150)
                     caught, wire = friendly_carrier.check_wire_catch(
                         aircraft.x, aircraft.y, aircraft.vz,
-                        aircraft.get_airspeed_kts(), aircraft.gear_down)
+                        aircraft.get_airspeed_kts(), aircraft.gear_down,
+                        max_wire_speed=max_wire)
                     if caught and aircraft.vz <= 0:
-                        # Arrested landing!
                         aircraft.vz = 0
-                        aircraft.vx *= 0.85  # Wire deceleration
+                        aircraft.vx *= 0.85
                         aircraft.vy *= 0.85
                         aircraft.on_ground = True
                         v_total = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
-                        if v_total < 10:
-                            status = f"CARRIER LANDING - Wire {wire}!"
+                        if v_total < 10 and not landing_scorer._landed_this_approach:
+                            result = landing_scorer.score_trap(aircraft, friendly_carrier, wire)
+                            landing_scorer._landed_this_approach = True
+                            last_landing_result = result
+                            landing_grade_timer = 6.0
+                            status = f"GRADE {result['grade']} — Wire {wire} ({result['total_score']:.0f}%)"
                             sound_mgr.play('wire_catch')
-                            pilot_dossier.record_carrier_landing()
+                            pilot_dossier.record_carrier_landing(result)
                             radio.call('carrier', 'trapped', cooldown=30.0, wire=wire)
-                    elif aircraft.vz < 0:
-                        # On deck but missed wires - bolter
+                            gkey = f"grade_{result['grade'].lower()}"
+                            if gkey in RadioChatter.CARRIER_CALLS:
+                                radio.call('carrier', gkey, cooldown=60.0, wire=wire)
+                            if result['grade'] == 'S':
+                                sound_mgr.play_sting('landing_perfect')
+                            if active_mission and hasattr(active_mission, 'on_trap'):
+                                active_mission.on_trap(result['grade'])
+                    elif aircraft.vz < 0 and not landing_scorer._landed_this_approach:
                         aircraft.vz = 0
                         aircraft.on_ground = True
+                        result = landing_scorer.score_trap(
+                            aircraft, friendly_carrier, 0, bolter=True)
+                        landing_scorer._landed_this_approach = True
+                        last_landing_result = result
+                        landing_grade_timer = 4.0
+                        status = "BOLTER — wave off!"
                         radio.call('carrier', 'bolter', cooldown=10.0)
+                elif landing_scorer._landed_this_approach and aircraft.z > 200:
+                    landing_scorer.reset_approach()
 
             # Update weather, time of day, radio
             weather.update(dt)
@@ -544,13 +580,17 @@ def main():
 
                 # Check mission objectives
                 if active_mission and active_mission.status == "active":
-                    mission_result = active_mission.check_objectives(aircraft, target_mgr, friendly_carrier)
+                    mission_result = active_mission.check_objectives(
+                        aircraft, target_mgr, friendly_carrier)
                     if mission_result == "success":
                         active_mission.status = "success"
+                        sound_mgr.play_sting('mission_success')
                     elif mission_result == "failed":
                         active_mission.status = "failed"
+                        sound_mgr.play_sting('mission_fail')
                     if crashed and active_mission.status == "active":
                         active_mission.status = "failed"
+                        sound_mgr.play_sting('mission_fail')
 
             screen.fill(BLACK)
 
@@ -673,6 +713,10 @@ def main():
 
             # Radio messages
             radio.draw(screen)
+
+            # LSO grade card after trap
+            if landing_grade_timer > 0 and last_landing_result:
+                draw_landing_grade(screen, last_landing_result)
 
             # Camera view indicator
             view_text = font_small.render(f"VIEW: {CAMERA_NAMES[camera_view]} (V to change)", True, WHITE)

@@ -66,6 +66,10 @@ class F6F_Hellcat(Aircraft):
     STALL_SPEED_CLEAN = 87
     STALL_SPEED_FLAPS = 70
 
+    # Carrier landing parameters (LSO grading)
+    CARRIER_IDEAL_SPEED = (105, 125)
+    CARRIER_MAX_WIRE_SPEED = 150
+
     def reset(self):
         self.ref_lat = MAP_CENTER_LAT
         self.ref_lon = MAP_CENTER_LON
@@ -478,6 +482,9 @@ class F4U_Corsair(F6F_Hellcat):
     STALL_SPEED_CLEAN = 92
     STALL_SPEED_FLAPS = 76
 
+    CARRIER_IDEAL_SPEED = (108, 128)
+    CARRIER_MAX_WIRE_SPEED = 145
+
     def reset(self):
         super().reset()
         # F4U-1D loadout: 6x .50 cal, 8x HVAR rockets, 2x 1000lb bombs.
@@ -525,6 +532,10 @@ class SBD_Dauntless(F6F_Hellcat):
     GEAR_MAX_SPEED = 130
     STALL_SPEED_CLEAN = 78
     STALL_SPEED_FLAPS = 62
+
+    # Heavier approach — slower trap window, steeper LSO standards
+    CARRIER_IDEAL_SPEED = (95, 115)
+    CARRIER_MAX_WIRE_SPEED = 130
 
     def reset(self):
         super().reset()

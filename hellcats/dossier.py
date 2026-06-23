@@ -30,6 +30,9 @@ class PilotDossier:
         self.missions_completed = []
         self.missions_attempted = 0
         self.carrier_landings = 0
+        self.best_landing_grade = None
+        self.landing_points = 0
+        self.sbd_qual_complete = False
         self.load()
 
     def get_rank(self):
@@ -60,9 +63,24 @@ class PilotDossier:
                 self.total_score += 500  # Bonus for first completion
         self.save()
 
-    def record_carrier_landing(self):
+    def record_carrier_landing(self, landing_result=None):
+        """Record trap; landing_result from LandingScorer.score_trap()."""
         self.carrier_landings += 1
-        self.total_score += 50
+        if landing_result:
+            grade = landing_result.get('grade', 'C')
+            points = landing_result.get('points', 50)
+            self.landing_points += points
+            self.total_score += points
+            if self.best_landing_grade is None:
+                self.best_landing_grade = grade
+            else:
+                from hellcats.carrier_ops import GRADE_ORDER
+                if GRADE_ORDER.index(grade) < GRADE_ORDER.index(self.best_landing_grade):
+                    self.best_landing_grade = grade
+            if landing_result.get('aircraft_name', '').startswith('SBD') and grade in ('S', 'A', 'B'):
+                self.sbd_qual_complete = True
+        else:
+            self.total_score += 50
         self.save()
 
     def save(self):
@@ -74,6 +92,9 @@ class PilotDossier:
             'missions_completed': self.missions_completed,
             'missions_attempted': self.missions_attempted,
             'carrier_landings': self.carrier_landings,
+            'best_landing_grade': self.best_landing_grade,
+            'landing_points': self.landing_points,
+            'sbd_qual_complete': self.sbd_qual_complete,
         }
         try:
             with open(SAVE_FILE, 'w') as f:
@@ -92,6 +113,9 @@ class PilotDossier:
             self.missions_completed = data.get('missions_completed', [])
             self.missions_attempted = data.get('missions_attempted', 0)
             self.carrier_landings = data.get('carrier_landings', 0)
+            self.best_landing_grade = data.get('best_landing_grade')
+            self.landing_points = data.get('landing_points', 0)
+            self.sbd_qual_complete = data.get('sbd_qual_complete', False)
         except Exception:
             pass
 
@@ -213,6 +237,9 @@ def draw_dossier(surface, dossier):
         f"Missions Attempted: {dossier.missions_attempted}",
         f"Missions Completed: {len(dossier.missions_completed)}",
         f"Carrier Landings: {dossier.carrier_landings}",
+        f"Best Trap Grade: {dossier.best_landing_grade or '—'}",
+        f"Landing Points: {dossier.landing_points:,}",
+        f"SBD Carrier Qual: {'PASSED' if dossier.sbd_qual_complete else 'Incomplete'}",
         f"Aircraft Kills: {dossier.total_kills.get('aircraft', 0)}",
         f"Ships Sunk: {dossier.total_kills.get('ship', 0)}",
         f"Ground Targets: {dossier.total_kills.get('ground', 0)}",

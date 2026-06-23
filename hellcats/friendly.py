@@ -52,11 +52,11 @@ class FriendlyCarrier:
         local_lat = dx * math.cos(hdg_rad) - dy * math.sin(hdg_rad)
         return abs(local_fwd) < self.LENGTH / 2 and abs(local_lat) < self.WIDTH / 2
 
-    def check_wire_catch(self, px, py, vz, airspeed_kts, gear_down):
+    def check_wire_catch(self, px, py, vz, airspeed_kts, gear_down, max_wire_speed=150):
         """Check if landing in arresting wire zone. Returns (caught, wire_num) or (False, 0)"""
         if not gear_down:
             return False, 0
-        if airspeed_kts > 150:  # Too fast for wires
+        if airspeed_kts > max_wire_speed:
             return False, 0
 
         hdg_rad = math.radians(self.heading)

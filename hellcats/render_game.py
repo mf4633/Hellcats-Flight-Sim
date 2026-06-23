@@ -1943,3 +1943,30 @@ def draw_g_effects(surface, aircraft):
             surface.blit(warn, rect)
 
 
+def draw_landing_grade(surface, result):
+    """LSO grade card after a carrier trap."""
+    if not result:
+        return
+    grade = result.get('grade', '?')
+    colors = {'S': (255, 215, 0), 'A': HUD_GREEN, 'B': HUD_AMBER, 'C': (200, 200, 120), 'F': HUD_RED}
+    color = colors.get(grade, WHITE)
+
+    card_w, card_h = 420, 200
+    cx, cy = WIDTH // 2, HEIGHT // 2 - 40
+    pygame.draw.rect(surface, (15, 25, 35), (cx - card_w // 2, cy - card_h // 2, card_w, card_h), border_radius=8)
+    pygame.draw.rect(surface, color, (cx - card_w // 2, cy - card_h // 2, card_w, card_h), 3, border_radius=8)
+
+    grade_text = font_large.render(f"LSO GRADE: {grade}", True, color)
+    surface.blit(grade_text, (cx - grade_text.get_width() // 2, cy - 70))
+
+    label = font_med.render(result.get('label', ''), True, WHITE)
+    surface.blit(label, (cx - label.get_width() // 2, cy - 30))
+
+    pts = font_small.render(f"+{result.get('points', 0)} points", True, HUD_AMBER)
+    surface.blit(pts, (cx - pts.get_width() // 2, cy + 5))
+
+    for i, line in enumerate(result.get('breakdown', [])[:4]):
+        detail = font_tiny.render(line, True, (160, 170, 180))
+        surface.blit(detail, (cx - card_w // 2 + 16, cy + 35 + i * 18))
+
+

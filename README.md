@@ -14,17 +14,25 @@ A WWII Pygame flight simulator and historical disaster recreation, inspired by t
 - **A6M Zero** — superior turn rate, historical AI dogfighting
 - **G4M Betty** — bomber targets in scramble and strike missions
 
-### Combat Missions (10)
+### Combat Missions (12)
 1. **Flight School** — practice takeoff, flight, carrier landing
-2. **Bomb Base** — strike an enemy airfield and RTB
-3. **Scramble** — intercept inbound bomber strike
-4. **Coral Sea** — defend the task force (May 1942)
-5. **Midway CAP** — break the first wave over Midway (June 1942)
-6. **Divine Wind** — kamikaze defense
-7. **Flat Top** — sink the enemy carrier
-8. **Bomber Escort** — protect B-17s to the target
-9. **Torpedo Run** — low-level convoy attack
-10. **Night Strike** — fuel depot raid under searchlights
+2. **Carrier Qual (SBD)** — graded trap; earn LSO grade B or better
+3. **Bomb Base** — strike an enemy airfield and RTB
+4. **Scramble** — intercept inbound bomber strike
+5. **Coral Sea** — defend the task force (May 1942)
+6. **Midway CAP** — break the first wave over Midway (June 1942)
+7. **Midway Dive** — SBD dive bomb on the carrier Kaga, then RTB (June 1942)
+8. **Divine Wind** — kamikaze defense
+9. **Flat Top** — sink the enemy carrier
+10. **Bomber Escort** — protect B-17s to the target
+11. **Torpedo Run** — low-level convoy attack
+12. **Night Strike** — fuel depot raid under searchlights
+
+### Carrier Landing Grades
+Every trap is scored by the LSO: **S** (perfect), **A**, **B** (pass), **C**, **F** (bolter). Scoring factors: wire number, approach speed, sink rate, centerline, gear. The SBD uses a slower trap window (95–115 kts). Grades award bonus points and appear in your pilot dossier (**P**).
+
+### Audio
+Procedural background music: menu theme, combat tension, disaster drone. Stings play on perfect traps and mission results. Toggle volume via system mixer; no external audio files required.
 
 ### Disaster Recreations (4)
 - **TWA Flight 800** (1996) — center fuel tank explosion
@@ -108,6 +116,7 @@ hellcats/
   bootstrap.py          # Pygame init, fonts, map loading
   hotp.py               # Authentic 1991 RNG & aero tables
   aircraft.py           # Flight models
+  carrier_ops.py        # LSO landing grades
   missions.py           # Combat missions & campaign
   disasters.py          # Historical accident scenarios
   weapons.py / targets.py / friendly.py

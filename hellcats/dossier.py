@@ -3,7 +3,7 @@ import json
 import os
 import pygame
 from hellcats.bootstrap import (
-    WIDTH, HEIGHT, PHYSICS_DT, HUD_GREEN, HUD_AMBER, WHITE,
+    WIDTH, HEIGHT, PHYSICS_DT, HUD_GREEN, HUD_AMBER, HUD_RED, WHITE,
     font_title, font_large, font_med, font_small, font_tiny,
 )
 from hellcats.hotp import HOTP_RNG, hotp_rng

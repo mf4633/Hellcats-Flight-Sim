@@ -7,6 +7,7 @@ from hellcats.friendly import FriendlyBomber
 from hellcats.hotp import hotp_rng
 from hellcats.carrier_ops import LandingScorer
 from hellcats.aircraft import F6F_Hellcat, SBD_Dauntless
+from hellcats.dossier import SAVE_FILE
 from hellcats.bootstrap import (
     PHYSICS_DT, WIDTH, HEIGHT, HUD_GREEN, HUD_AMBER, HUD_RED, WHITE,
     font_title, font_large, font_med, font_small,

@@ -1,4 +1,5 @@
 """Radio chatter system."""
+import math
 import random
 import pygame
 from hellcats.hotp import hotp_rng

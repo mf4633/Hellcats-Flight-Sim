@@ -5,7 +5,7 @@ from hellcats.hotp import (
     hotp_rng, HOTP_FLAG_JITTER_AXIS1, HOTP_FLAG_JITTER_AXIS2,
     HOTP_FLAG_CONTROL_GATE, HOTP_FLAG_SMOOTH_CTRL,
     hotp_delta_smooth, hotp_delta_smooth_s16, hotp_aero_lookup,
-    hotp_fun_e570, hotp_fun_e468,
+    hotp_fun_e570, hotp_fun_e468, _half_toward_zero,
 )
 from hellcats.bootstrap import PHYSICS_DT
 

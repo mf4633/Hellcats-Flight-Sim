@@ -1,5 +1,6 @@
 """In-game rendering: views, HUD, instruments."""
 import math
+import random
 import pygame
 from hellcats.bootstrap import (
     WIDTH, HEIGHT, WHITE, BLACK, HUD_GREEN, HUD_AMBER, HUD_RED,
@@ -12,7 +13,6 @@ from hellcats.bootstrap import (
 from hellcats.hotp import hotp_rng
 from hellcats.map_geo import feet_to_pixel, geo_to_pixel
 from hellcats.aircraft import F6F_Hellcat, F4U_Corsair, Boeing747_200
-from hellcats.disasters import DisasterAircraft
 from hellcats.friendly import FriendlyBomber
 
 # ============== GAME DRAWING FUNCTIONS ==============
@@ -386,7 +386,9 @@ def draw_chase_view(surface, aircraft, map_img, time_elapsed):
         ry = px * math.sin(roll_rad) + py * math.cos(roll_rad)
         return (cx + rx * scale, cy + ry * scale * 0.5)
 
-    is_747 = isinstance(aircraft, (Boeing747_200, DisasterAircraft))
+    # Boeing737_300 and AirbusA330_200 (incl. every disaster aircraft) subclass
+    # Boeing747_200, so a single isinstance covers all airliner rendering.
+    is_747 = isinstance(aircraft, Boeing747_200)
 
     if is_747:
         # --- Boeing 747 ---
@@ -1483,7 +1485,7 @@ def draw_aircraft_symbol(surface, aircraft):
     def rot(px, py):
         return (cx + px * cos_h - py * sin_h, cy + px * sin_h + py * cos_h)
 
-    if isinstance(aircraft, (Boeing747_200, DisasterAircraft)):
+    if isinstance(aircraft, Boeing747_200):
         # 747 planform (top view) - swept wings, 4 engines
         body = [rot(0, -30), rot(4, -25), rot(5, 25), rot(3, 35), rot(0, 38),
                 rot(-3, 35), rot(-5, 25), rot(-4, -25)]

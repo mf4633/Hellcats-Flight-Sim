@@ -1,6 +1,9 @@
 """Friendly carrier, wingmen, bombers."""
 import math
-from hellcats.hotp import hotp_rng
+from hellcats.hotp import (
+    hotp_rng, hotp_delta_smooth, hotp_aero_lookup,
+    HOTP_FLAG_JITTER_AXIS1, HOTP_FLAG_JITTER_AXIS2,
+)
 from hellcats.bootstrap import PHYSICS_DT
 
 # ============== FRIENDLY CARRIER ==============

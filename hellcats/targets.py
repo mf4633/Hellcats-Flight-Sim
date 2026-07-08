@@ -832,33 +832,36 @@ class TargetManager:
                         self.kills['aircraft'] += 1
                     break
 
-        # Check bombs (massive damage)
+        # Check bombs (massive damage). Blast keys on the detonation flag set at
+        # surface impact, not a narrow z-band, so a fast-falling bomb can't be
+        # reaped before its blast lands. Reap the bomb once processed.
         for bomb in weapons_mgr.bombs[:]:
-            if not bomb.alive:
+            if not bomb.detonated:
                 continue
-            # Bombs check on impact (z near 0)
-            if bomb.z <= 10:
-                blast_radius = 200 if bomb.weight <= 500 else 280
-                max_damage = 300 * (bomb.weight / 500)
-                for ship in self.ships:
-                    if ship.alive:
-                        dist = math.sqrt((bomb.x - ship.x)**2 + (bomb.y - ship.y)**2)
-                        if dist < blast_radius:
-                            damage = max_damage * (1 - dist / blast_radius)
-                            ship.take_damage(damage)
-                            if not ship.alive:
-                                self.score += self._get_score(ship)
-                                self.kills['ship'] += 1
-                                weapons_mgr.explosions.append([ship.x, ship.y, 0, 0, 300])
+            blast_radius = 200 if bomb.weight <= 500 else 280
+            max_damage = 300 * (bomb.weight / 500)
+            for ship in self.ships:
+                if ship.alive:
+                    dist = math.sqrt((bomb.x - ship.x)**2 + (bomb.y - ship.y)**2)
+                    if dist < blast_radius:
+                        damage = max_damage * (1 - dist / blast_radius)
+                        ship.take_damage(damage)
+                        if not ship.alive:
+                            self.score += self._get_score(ship)
+                            self.kills['ship'] += 1
+                            weapons_mgr.explosions.append([ship.x, ship.y, 0, 0, 300])
 
-                for target in self.ground_targets:
-                    if target.alive:
-                        dist = math.sqrt((bomb.x - target.x)**2 + (bomb.y - target.y)**2)
-                        if dist < 150:
-                            target.take_damage(200)
-                            if not target.alive:
-                                self.score += self._get_score(target)
-                                self.kills['ground'] += 1
+            for target in self.ground_targets:
+                if target.alive:
+                    dist = math.sqrt((bomb.x - target.x)**2 + (bomb.y - target.y)**2)
+                    if dist < 150:
+                        target.take_damage(200)
+                        if not target.alive:
+                            self.score += self._get_score(target)
+                            self.kills['ground'] += 1
+
+            # Consumed — let weapons_mgr reap it next frame (blast applies once).
+            bomb.alive = False
 
         # Check torpedoes (massive damage to ships, must be armed and in water)
         for torp in weapons_mgr.torpedoes[:]:

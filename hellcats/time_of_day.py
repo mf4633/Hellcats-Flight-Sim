@@ -1,4 +1,5 @@
 """Day/night, stars, flares, searchlights."""
+import math
 import random
 import pygame
 
@@ -89,9 +90,14 @@ class TimeOfDay:
             sy = int(450 - aircraft.z / rel_y * 800)
             if not (-100 < sx < 1380):
                 continue
-            # Beam cone
+            # Beam cone — skip if the light projects at/above the top edge
+            # (player high above the gun), which would give a zero/negative
+            # surface height.
             beam_top = max(0, sy - 300)
-            beam_surf = pygame.Surface((60, sy - beam_top), pygame.SRCALPHA)
+            beam_height = sy - beam_top
+            if beam_height <= 0:
+                continue
+            beam_surf = pygame.Surface((60, beam_height), pygame.SRCALPHA)
             for row in range(beam_surf.get_height()):
                 alpha = max(5, 25 - row * 25 // max(1, beam_surf.get_height()))
                 w = 4 + row * 50 // max(1, beam_surf.get_height())

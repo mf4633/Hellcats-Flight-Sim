@@ -4,10 +4,12 @@ import pygame
 from hellcats import bootstrap
 from hellcats.bootstrap import (
     screen, clock, WIDTH, HEIGHT, PHYSICS_DT,
-    WHITE, HUD_GREEN, HUD_AMBER, HUD_RED,
+    BLACK, WHITE, HUD_GREEN, HUD_AMBER, HUD_RED,
     font_large, font_med, font_small, font_tiny,
-    satellite_map, CAMERA_OVERHEAD, CAMERA_COCKPIT, CAMERA_CHASE,
+    satellite_map,
+    CAMERA_OVERHEAD, CAMERA_COCKPIT, CAMERA_CHASE, CAMERA_NAMES,
 )
+from hellcats.map_geo import feet_to_pixel
 from hellcats.hotp import hotp_rng
 from hellcats.weather import Weather
 from hellcats.time_of_day import TimeOfDay

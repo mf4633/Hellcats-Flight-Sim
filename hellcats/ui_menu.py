@@ -1,9 +1,10 @@
 """Home screen and menus."""
 import pygame
 from hellcats.bootstrap import (
-    WIDTH, HEIGHT, WHITE, HUD_GREEN, HUD_AMBER,
+    WIDTH, HEIGHT, WHITE, HUD_GREEN, HUD_AMBER, HUD_RED,
     font_title, font_large, font_med, font_small, font_tiny,
 )
+from hellcats.missions import Campaign
 from hellcats.render_aircraft import (
     draw_f6f_rendering, draw_f4u_rendering, draw_747_rendering, draw_sbd_rendering,
 )

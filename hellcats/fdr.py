@@ -1,4 +1,5 @@
 """Flight data recorder."""
+import math
 from hellcats.bootstrap import PHYSICS_DT
 
 # ============== FLIGHT DATA RECORDER ==============

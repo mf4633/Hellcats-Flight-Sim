@@ -118,6 +118,51 @@ class TestRuntimeSmoke(unittest.TestCase):
         campaign.start()
         draw_campaign_status(self.surface, campaign, PilotDossier())
 
+    def test_eastern401_descent_is_gentle(self):
+        """Eastern 401 should slowly descend, not spiral into an accelerating dive."""
+        from hellcats.disasters import Eastern401, create_disaster_aircraft
+
+        class _NoKeys:
+            def __getitem__(self, k):
+                return False
+
+        scenario = Eastern401()
+        ac = create_disaster_aircraft(scenario)
+        for _ in range(int(scenario.TRIGGER_TIME * 60) + 5):
+            ac.update(1 / 60, _NoKeys())
+        worst_fpm = 0.0
+        for _ in range(int(10 * 60)):  # 10 s of drift
+            ac.update(1 / 60, _NoKeys())
+            worst_fpm = min(worst_fpm, ac.vz * 60)
+        self.assertTrue(ac._autopilot_drift)
+        self.assertLess(ac.vz, 0, "should be descending")
+        # Bounded sink rate — the old bug accelerated past -7000 fpm in seconds.
+        self.assertGreater(worst_fpm, -1200, f"descent too steep: {worst_fpm:.0f} fpm")
+
+    def test_af447_airspeed_offset_bounded(self):
+        """AF447 unreliable-airspeed offset drifts within bounds, not per-frame noise."""
+        from hellcats.disasters import AirFrance447, create_disaster_aircraft
+
+        class _NoKeys:
+            def __getitem__(self, k):
+                return False
+
+        scenario = AirFrance447()
+        ac = create_disaster_aircraft(scenario)
+        for _ in range(int(scenario.TRIGGER_TIME * 60) + 5):
+            ac.update(1 / 60, _NoKeys())
+        prev = getattr(ac, "_display_airspeed_offset", 0.0)
+        max_step = 0.0
+        for _ in range(300):
+            scenario.apply_effects(ac)
+            cur = ac._display_airspeed_offset
+            self.assertGreaterEqual(cur, -60.0)
+            self.assertLessEqual(cur, 40.0)
+            max_step = max(max_step, abs(cur - prev))
+            prev = cur
+        # Smooth drift: each step is small, not a full-range resample.
+        self.assertLessEqual(max_step, 8.0, f"offset jumped {max_step:.1f} in one frame")
+
 
 if __name__ == "__main__":
     unittest.main()

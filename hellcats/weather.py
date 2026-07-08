@@ -134,8 +134,10 @@ class Weather:
             x, y = int(drop[0]), int(drop[1])
             if 0 <= x < 1280 and 0 <= y < 900:
                 length = int(6 + self.rain_intensity * 8)
-                max(60, min(180, int(180 * self.rain_intensity)))
-                pygame.draw.line(surface, (180, 190, 210), (x, y), (x - 1, y + length), 1)
+                # Heavier rain draws brighter streaks.
+                b = max(60, min(180, int(180 * self.rain_intensity)))
+                pygame.draw.line(surface, (b, min(255, b + 10), min(255, b + 30)),
+                                 (x, y), (x - 1, y + length), 1)
 
     def draw_cloud_layer(self, surface, aircraft):
         """Draw cloud base when flying near/through clouds."""

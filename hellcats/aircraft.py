@@ -31,6 +31,13 @@ class Aircraft:
     def get_vertical_speed(self):
         return self.vz * 60
 
+    def get_load_factor(self):
+        lift = getattr(self, '_cached_lift', None)
+        weight = getattr(self, '_cached_weight', None)
+        if lift is None or weight is None:
+            lift, _, _, weight, _, _, _, _ = self.calculate_forces()
+        return lift / weight if weight > 0 else 1.0
+
 
 # ============== GRUMMAN F6F-5 HELLCAT ==============
 class F6F_Hellcat(Aircraft):
@@ -431,13 +438,6 @@ class F6F_Hellcat(Aircraft):
                 return "** REDOUT **"
             return "** BLACKOUT **"
         return "FLYING"
-
-    def get_load_factor(self):
-        lift = getattr(self, '_cached_lift', None)
-        weight = getattr(self, '_cached_weight', None)
-        if lift is None or weight is None:
-            lift, _, _, weight, _, _, _, _ = self.calculate_forces()
-        return lift / weight if weight > 0 else 1.0
 
 
 # ============== VOUGHT F4U-1D CORSAIR ==============
@@ -853,13 +853,6 @@ class Boeing747_200(Aircraft):
         if self.overspeed:
             return "!! OVERSPEED !!"
         return "FLYING"
-
-    def get_load_factor(self):
-        lift = getattr(self, '_cached_lift', None)
-        weight = getattr(self, '_cached_weight', None)
-        if lift is None or weight is None:
-            lift, _, _, weight, _, _, _, _ = self.calculate_forces()
-        return lift / weight if weight > 0 else 1.0
 
 
 # ============== BOEING 737-300 ==============

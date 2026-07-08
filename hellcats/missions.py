@@ -43,6 +43,13 @@ class Mission:
         """Override to check mission-specific objectives. Returns status string."""
         return "active"
 
+    def _trapped_on_deck(self, aircraft, carrier):
+        """True once the aircraft has landed and come to a stop on the deck."""
+        if not (aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y)):
+            return False
+        v = math.sqrt(aircraft.vx ** 2 + aircraft.vy ** 2)
+        return v < 15
+
     def get_score(self):
         return (self.kills['aircraft'] * 500 +
                 self.kills['ship'] * 1000 +
@@ -75,11 +82,9 @@ class MissionFlightSchool(Mission):
         target_mgr.enemy_aircraft.clear()
 
     def check_objectives(self, aircraft, target_mgr, carrier):
-        if aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
-            v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
-            if v < 15:
-                self.returned_to_base = True
-                return "success"
+        if self._trapped_on_deck(aircraft, carrier):
+            self.returned_to_base = True
+            return "success"
         return "active"
 
 
@@ -127,11 +132,9 @@ class MissionBombBase(Mission):
         if hangars_alive == 0:
             self.objectives_met = True
 
-        if self.objectives_met and aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
-            v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
-            if v < 15:
-                self.returned_to_base = True
-                return "success"
+        if self.objectives_met and self._trapped_on_deck(aircraft, carrier):
+            self.returned_to_base = True
+            return "success"
 
         return "active"
 
@@ -273,11 +276,9 @@ class MissionFlatTop(Mission):
         if not carrier_alive:
             self.objectives_met = True
 
-        if self.objectives_met and aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
-            v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
-            if v < 15:
-                self.returned_to_base = True
-                return "success"
+        if self.objectives_met and self._trapped_on_deck(aircraft, carrier):
+            self.returned_to_base = True
+            return "success"
 
         return "active"
 
@@ -454,11 +455,9 @@ class MissionTorpedoRun(Mission):
         if transports_sunk >= 2:
             self.objectives_met = True
 
-        if self.objectives_met and aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
-            v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
-            if v < 15:
-                self.returned_to_base = True
-                return "success"
+        if self.objectives_met and self._trapped_on_deck(aircraft, carrier):
+            self.returned_to_base = True
+            return "success"
 
         return "active"
 
@@ -515,11 +514,9 @@ class MissionNightStrike(Mission):
         if fuel_alive == 0:
             self.objectives_met = True
 
-        if self.objectives_met and aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
-            v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
-            if v < 15:
-                self.returned_to_base = True
-                return "success"
+        if self.objectives_met and self._trapped_on_deck(aircraft, carrier):
+            self.returned_to_base = True
+            return "success"
 
         return "active"
 
@@ -669,11 +666,9 @@ class MissionCarrierQual(Mission):
 
     def check_objectives(self, aircraft, target_mgr, carrier):
         if self.last_trap_grade and LandingScorer().grade_at_least(self.last_trap_grade, 'B'):
-            if aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
-                v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
-                if v < 15:
-                    self.returned_to_base = True
-                    return "success"
+            if self._trapped_on_deck(aircraft, carrier):
+                self.returned_to_base = True
+                return "success"
         return "active"
 
     def get_score(self):
@@ -732,11 +727,9 @@ class MissionMidwayDive(Mission):
             self.carrier_sunk = True
             self.objectives_met = True
 
-        if self.objectives_met and aircraft.on_ground and carrier.check_on_deck(aircraft.x, aircraft.y):
-            v = math.sqrt(aircraft.vx**2 + aircraft.vy**2)
-            if v < 15:
-                self.returned_to_base = True
-                return "success"
+        if self.objectives_met and self._trapped_on_deck(aircraft, carrier):
+            self.returned_to_base = True
+            return "success"
         return "active"
 
     def get_score(self):

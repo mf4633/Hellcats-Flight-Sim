@@ -114,8 +114,17 @@ class Bomb(Projectile):
         self.armed = False
         self.arm_altitude = z - 500  # Arms after falling 500 ft
         self.trail = []  # Falling trail for visual
+        # Set the frame the bomb reaches the surface. Blast damage keys on this
+        # flag (not a narrow z-band) so a fast-falling bomb can't step past the
+        # impact window and get reaped before check_hits sees it.
+        self.detonated = False
 
     def update(self, dt):
+        # A detonated bomb is frozen at impact until check_hits reaps it, so it
+        # survives exactly one frame past impact and applies its blast once.
+        if self.detonated:
+            return
+
         # Simple drag on bomb
         speed = math.sqrt(self.vx**2 + self.vy**2 + self.vz**2)
         if speed > 10:
@@ -137,6 +146,14 @@ class Bomb(Projectile):
         # Arm after falling
         if self.z < self.arm_altitude:
             self.armed = True
+
+        # Surface impact — freeze and mark for the blast pass. super().update
+        # already flagged alive=False at z<=0; keep it alive one more frame.
+        if self.z <= 0:
+            self.z = 0
+            self.detonated = True
+            self.alive = True
+            return
 
         # Max flight time 30 seconds
         if self.age > 30.0:

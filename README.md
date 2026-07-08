@@ -1,5 +1,7 @@
 # Hellcats Over the Pacific - Enhanced Edition
 
+[![CI](https://github.com/mf4633/Hellcats-Flight-Sim/actions/workflows/ci.yml/badge.svg)](https://github.com/mf4633/Hellcats-Flight-Sim/actions/workflows/ci.yml)
+
 A WWII Pygame flight simulator and historical disaster recreation, inspired by the classic 1991 *Hellcats Over the Pacific*. Fly Pacific Theater combat missions, campaign sorties, and forensic simulations of historic aviation accidents — all in one physics engine.
 
 ![Main menu — Free Flight](docs/screenshots/01_menu_free_flight.png)
@@ -103,6 +105,19 @@ Module entry point:
 ```bash
 python -m hellcats
 ```
+
+## Testing
+
+The suite runs headlessly (no display or audio device required) and is
+exercised on every push by [CI](.github/workflows/ci.yml):
+
+```bash
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy python -m unittest discover -s tests
+```
+
+`tests/test_no_undefined_names.py` statically scans the package for undefined
+names (e.g. an import dropped during a refactor); `tests/test_smoke_runtime.py`
+drives the rendering, AI, and campaign code paths that the unit tests don't.
 
 ## Controls
 

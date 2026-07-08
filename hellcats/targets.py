@@ -410,7 +410,6 @@ class EnemyAircraft(Target):
         # These create the signature smooth movement of the original game.
         # 0x66e: heading-axis accumulator (from jitter + control input)
         target_66e = int(self.hotp_axis1 * 0.5 + self.hotp_control_accum * 2)
-        target_66e - self.hotp_move_66e
         self.hotp_move_66e = hotp_delta_smooth(self.hotp_move_66e, target_66e, dt)
 
         # 0x672: template-scaled accumulator (gated by 0x669 and status bits)
@@ -691,7 +690,9 @@ class EnemyAircraft(Target):
             self.vz = -100  # Hard dive
             self.pitch = -30
         else:
-            self._adjust_altitude(carrier.y if hasattr(carrier, 'z') else 200, dt)
+            # Cruise toward the carrier's altitude (deck level) before the
+            # terminal dive; carriers have no z, so default to a low run-in.
+            self._adjust_altitude(getattr(carrier, 'z', 200), dt)
 
     def check_hit(self, px, py, pz):
         """Check if a point hits this aircraft"""

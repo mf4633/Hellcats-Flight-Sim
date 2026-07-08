@@ -94,7 +94,11 @@ def create_disaster_aircraft(scenario):
                 self.yaw_rate *= degradation
             if getattr(self, "_autopilot_drift", False):
                 self.pitch = max(-15, self.pitch - 0.03 * dt * 60)
-                self.vz = min(self.vz - 120 * dt, -80 / 60)
+                # Slow, near-imperceptible descent (the crew never noticed it),
+                # not an accelerating dive. Ease toward a gentle ~600 fpm sink
+                # and hold it so the altimeter is the only cue.
+                target_vz = -600 / 60  # ft/s
+                self.vz = max(target_vz, self.vz - 4 * dt)
             return result
 
     return DisasterAircraft()
@@ -231,7 +235,10 @@ class AirFrance447(DisasterScenario):
         if not self.triggered:
             return
         aircraft._airspeed_unreliable = True
-        aircraft._display_airspeed_offset = random.uniform(-60, 40)
+        # Let the erroneous reading wander smoothly rather than resampling a
+        # fresh random value every frame (which reads as 60 Hz strobing).
+        prev = getattr(aircraft, "_display_airspeed_offset", 0.0)
+        aircraft._display_airspeed_offset = max(-60.0, min(40.0, prev + random.uniform(-4, 4)))
         time_since = max(0.0, self.flight_time - self.TRIGGER_TIME)
         degradation = max(0.2, 1.0 - time_since / 60.0)
         if aircraft.pitch > 8:
